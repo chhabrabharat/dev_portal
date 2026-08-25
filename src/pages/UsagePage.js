@@ -124,7 +124,7 @@ export default function UsagePage() {
           <Card>
             {loading && <LinearProgress />}
             <TableContainer sx={{ overflowX: 'auto' }}>
-              <Table size="small">
+              <Table size="small" sx={{ minWidth: 1000 }}>
                 <TableHead>
                   <TableRow>
                     <TableCell sx={{ fontWeight: 700 }}>Clinic</TableCell>

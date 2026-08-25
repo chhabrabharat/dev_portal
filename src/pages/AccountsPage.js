@@ -135,7 +135,10 @@ export default function AccountsPage() {
         {loading && <LinearProgress />}
         {/* Wide table scrolls inside its own container so the page body never scrolls sideways. */}
         <TableContainer sx={{ overflowX: 'auto' }}>
-          <Table size="small">
+          {/* minWidth over-rides the container squeeze: without it, 8 columns compress into
+              the available width and the clinic name wraps to 3-4 lines. The container's
+              overflow-x already handles the resulting scroll. */}
+          <Table size="small" sx={{ minWidth: 1080 }}>
             <TableHead>
               <TableRow>
                 {COLUMNS.map((col) => (
@@ -167,8 +170,8 @@ export default function AccountsPage() {
                   onClick={() => navigate(`/accounts/${a.id}`)}
                   sx={{ cursor: 'pointer' }}
                 >
-                  <TableCell>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  <TableCell sx={{ minWidth: 220 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {a.name || `Clinic #${a.id}`}
                     </Typography>
                     <Typography variant="caption" sx={{ color: COLORS.textMuted }}>
