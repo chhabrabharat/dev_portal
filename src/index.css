@@ -1,0 +1,17 @@
+/*
+ * Intentionally minimal. crm_frontend's global.css carries a broad-selector dark-mode override
+ * that paints every element's background-color, which is a documented source of subtle visual
+ * bugs there. This portal has no dark mode and no such override, so MUI's own theming is left to
+ * do its job unimpeded - don't add global element selectors here.
+ */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', 'Segoe UI', Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
