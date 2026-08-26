@@ -1,6 +1,8 @@
 # PRD — Clinic, Doctor & Account Settings
 
-Status: **Draft for review** — no code changes yet.
+Status: **Implemented** — this document is the spec the code was built against, kept in every
+repo that implements part of it. Section 1 describes the state before the work; sections 3–8 are
+what now exists. Anything still outstanding is called out in §10.
 Repos affected: `crm_frontend`, `health`, `dev_portal`, `crm_mobile`, `patient_portal`.
 
 ## 1. Problem
@@ -24,8 +26,11 @@ source, and every account gets the same product. Four concrete gaps:
 - The frontend hardcodes the picker default in three places:
   `BookAppointmentModal.js:27`, `BookAppointmentPage.js:60`, `ManageAppointment.js:68`
   (`useState(30)`), and `AddServiceProvider.js:82,311,439` defaults new working days to 30.
-- `EditDoctor.js` has **no working-days editing at all** — a doctor's slot duration can only
-  be set when the doctor is created. `DoctorDetails.js:531` shows it read-only.
+- Slot duration is **not editable anywhere in the UI**. `EditDoctor.js` delegates to
+  `AddServiceProvider.js`, whose Availability section does let you pick working days and their
+  start/end times — but it never renders a field for `slotDurationMinutes`, so the stored value is
+  always the hardcoded 30 from `defaultSlot`. `DoctorDetails.js:531` displays it read-only. A clinic
+  that wants 15-minute slots has no way to say so.
 - `PublicDoctorProfile.js` renders `doctor.consultationFee` (`:458`, `:686`) and every
   `service.price` (`:868`–`:955`) unconditionally.
 - `Sidebar.js` builds nav from static `primaryLinks` / `secondaryLinks` arrays;
@@ -149,7 +154,7 @@ have somewhere to go.
 
 | Setting | Key | Default | Note |
 |---|---|---|---|
-| Slot duration per working day | `slotDurationMinutes` | inherit | **exists** — needs an edit UI |
+| Slot duration per working day | `slotDurationMinutes` | inherit | **exists** — stored and used, but no field to set it |
 | Provider default slot duration | `defaultSlotMinutes` | inherit location | new |
 | Consultation fee | `consultationFee` | — | exists |
 | Show fee publicly | `showFeePublicly` | inherit account | new |
@@ -250,7 +255,7 @@ accounts (all features on, plan STANDARD, no expiry) so nothing regresses on dep
 | `components/Sidebar.js` | filter `primaryLinks` / `secondaryLinks` through `useFeature` |
 | `App.js` | wrap gated routes in `<FeatureRoute flag>` → redirect + toast |
 | `pages/Settings.js` | new tabs: **Clinic Preferences**, **Booking Rules**, **Public Profile**, **Plan & Features** (read-only view of entitlements and expiry) |
-| `pages/EditDoctor.js` | add the missing working-days editor (day, hours, slot duration) + the new per-doctor toggles |
+| `pages/AddServiceProvider.js` (used by `EditDoctor.js`) | add the missing slot-length field to each working day, plus a Settings section for the per-doctor toggles |
 | `pages/AddServiceProvider.js` | default slot duration from settings instead of literal `30` |
 | `BookAppointmentPage.js`, `BookAppointmentModal.js`, `ManageAppointment.js` | initialise `slotMinutes` from resolved settings; hide the picker entirely when `allowSlotOverrideAtBooking` is false |
 | `pages/PublicDoctorProfile.js` | render fee/prices only when present in the response (server already stripped them) |
@@ -264,10 +269,12 @@ both themes because of the global dark-mode `background-color` override.
 
 ## 8. Other repos
 
-- **`dev_portal`** (empty today): super-admin console — account list with plan/expiry/status,
-  an account detail page with feature toggles, trial length, expiry date, limits, and usage
-  counts. Needs a `SUPER_ADMIN` role and a separate login. Recommend Vite + React + MUI reusing
-  `crm_frontend`'s tokens, so the two look related without sharing a build.
+- **`dev_portal`**: super-admin console — account list with plan/expiry/status, an account detail
+  page with feature toggles, trial length, expiry date, limits and usage counts, behind a
+  `SUPER_ADMIN` login. Built on Vite + React with plain CSS rather than MUI: that matches
+  `patient_portal`, the sibling it sits next to, and keeps an internal three-screen tool free of a
+  component-library dependency. It borrows `crm_frontend`'s colour tokens directly so the two still
+  read as one product.
 - **`crm_mobile`**: `navigation/routes.ts` and `DrawerContent.tsx` filter on the same flags;
   same expiry read-only handling in `api/client.ts`.
 - **`patient_portal`**: Invoices / Prescriptions sections respect the flags; blocked when the
@@ -291,6 +298,6 @@ both themes because of the global dark-mode `background-color` override.
 | Phase | Contents |
 |---|---|
 | **P0** | Backend: settings entities, `/me/bootstrap`, `roles` + `features` in login, default-row seeding for existing accounts |
-| **P1** | Menu + route gating in `crm_frontend`; Settings UI for clinic preferences; slot-duration resolution end-to-end; public price flags with server-side stripping; `EditDoctor` working-days editor |
+| **P1** | Menu + route gating in `crm_frontend`; Settings UI for clinic preferences; slot-duration resolution end-to-end; public price flags with server-side stripping; the missing slot-length field on each working day |
 | **P2** | Trial / expiry states, banners, read-only enforcement; `dev_portal` admin console |
 | **P3** | `crm_mobile` + `patient_portal` parity; currency setting replacing the `₹` literals; audit log of setting changes |
