@@ -222,8 +222,12 @@ New:
 - `PUT /accounts/{id}/settings` — clinic admin; rejects platform-owned keys.
 - `GET|PUT /account-locations/{id}/settings`
 - `GET|PUT /service-providers/{id}/settings`
-- Admin surface, `SUPER_ADMIN` only: `GET /admin/accounts`, `PATCH /admin/accounts/{id}/entitlements`,
-  `PATCH /admin/accounts/{id}/subscription`, `GET /admin/accounts/{id}/usage`.
+- Operator surface, on the existing platform realm (`PLATFORM_ADMIN` writes, `PLATFORM_SUPPORT`
+  reads): `GET|PATCH /platform/accounts/{id}/subscription`,
+  `GET /platform/accounts/{id}/entitlements`, `GET /platform/accounts/{id}/clinic-toggles`,
+  `PATCH /platform/accounts/{id}/entitlements/{feature}`, `GET /platform/accounts/feature-keys`.
+  These were first built as a separate `/api/admin/**` surface guarded by a `SUPER_ADMIN` clinic
+  role; that duplicated an operator realm already on `main` and has been retired in favour of it.
 
 Changed:
 
@@ -269,12 +273,14 @@ both themes because of the global dark-mode `background-color` override.
 
 ## 8. Other repos
 
-- **`dev_portal`**: super-admin console — account list with plan/expiry/status, an account detail
-  page with feature toggles, trial length, expiry date, limits and usage counts, behind a
-  `SUPER_ADMIN` login. Built on Vite + React with plain CSS rather than MUI: that matches
-  `patient_portal`, the sibling it sits next to, and keeps an internal three-screen tool free of a
-  component-library dependency. It borrows `crm_frontend`'s colour tokens directly so the two still
-  read as one product.
+- **`dev_portal`**: the operator console. A console already existed here on
+  `feature/platform-admin-portal` (CRA + MUI, with Leads and Usage pages and clinic-status changes)
+  backed by the `/api/platform/**` realm on `health`'s `main`. This work's Subscription and Modules
+  panels were ported onto that console's account detail page rather than shipping a second one, and
+  the duplicate Vite console built for this feature was removed. Neither side was a superset: theirs
+  had leads, usage and status; this one had the plan, trial, expiry, grace, limits and entitlements
+  the settings feature actually needs. Writes respect the realm's read-only `PLATFORM_SUPPORT`
+  role.
 - **`crm_mobile`**: `navigation/routes.ts` and `DrawerContent.tsx` filter on the same flags;
   same expiry read-only handling in `api/client.ts`.
 - **`patient_portal`**: Invoices / Prescriptions sections respect the flags; blocked when the
@@ -312,9 +318,10 @@ dev server. Every screenshot below is a real response from that stack.
 
 **Two seeding quirks worth knowing** (both pre-existing): `DemoDataSeeder` runs before
 `initRoles`, so on a genuinely empty database the demo logins are skipped with "ADMIN role not
-found" and only appear on the second start. And `SUPER_ADMIN` was missing from `initRoles`
-entirely — the operator console was unreachable because nobody could be granted a role the
-database had never heard of. That one is fixed as part of this work.
+found" and only appear on the second start. The second was that `SUPER_ADMIN` was missing from
+`initRoles` entirely, so the operator console was unreachable — nobody can be granted a role the
+database has never heard of. That was fixed at the time and has since become moot: the
+`SUPER_ADMIN` path was retired when these endpoints moved onto the platform realm.
 
 ### 11.1 What was checked
 
@@ -341,8 +348,12 @@ database had never heard of. That one is fixed as part of this work.
 | 20 days past expiry | ✅ `EXPIRED`, blocked, login itself refused with 402 |
 | Operator clears the expiry date | ✅ back to `ACTIVE`, open-ended |
 | Operator sets then lifts a location limit | ✅ 2 → unlimited |
-| Clinic admin calls `/api/admin/accounts` | ✅ 403 |
-| Operator (`SUPER_ADMIN`) calls it | ✅ both clinics listed |
+| Clinic admin calls the operator API | ✅ 403 |
+| Operator calls it | ✅ both clinics listed |
+
+The operator checks were run against the then-current `/api/admin/**` surface. The endpoints have
+since moved to `/api/platform/**` with the same behaviour and a stricter auth model; that move is
+covered by compilation and the realm's own isolation test, not by a re-run of the table above.
 
 ### 11.2 Three defects this found
 
