@@ -23,6 +23,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Tooltip from '@mui/material/Tooltip';
 import StatusChip from '../components/StatusChip';
 import StatCard from '../components/StatCard';
+import SubscriptionPanel from '../components/SubscriptionPanel';
 import { errorMessage, fetchAccount, updateAccountStatus } from '../services/api';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
 import { COLORS } from '../styles/js/styleConstants';
@@ -137,6 +138,8 @@ export default function AccountDetailPage() {
           hint={s.lastActivityAt ? dateTime(s.lastActivityAt) : 'no appointment ever booked'}
         />
       </Box>
+
+      <SubscriptionPanel accountId={id} canWrite={canWrite} />
 
       <Card sx={{ mb: 3 }}>
         <CardContent>

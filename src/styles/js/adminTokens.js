@@ -35,3 +35,34 @@ export const SETTABLE_STATUSES = ['NEW', 'ACTIVE', 'ON_HOLD', 'INACTIVE'];
  * a paying customer out of their own clinic.
  */
 export const LOGIN_BLOCKING_STATUSES = ['ON_HOLD', 'INACTIVE'];
+
+// Module labels for the entitlement toggles. Keys are the backend's FeatureKey wire names - the
+// same strings crm_frontend and crm_mobile gate their menus on, so renaming one breaks all three.
+export const FEATURE_LABELS = {
+  prescriptions: 'Prescriptions',
+  invoices: 'Invoices',
+  medicines: 'Medicines',
+  diagnosticTests: 'Diagnostic tests',
+  consultations: 'Consultations',
+  reports: 'Reports',
+  reviews: 'Reviews',
+  patientDocuments: 'Patient documents',
+  publicDoctorProfiles: 'Public doctor profiles',
+  patientPortal: 'Patient portal',
+  whatsappNotifications: 'WhatsApp notifications',
+  aiAssistant: 'AI assistant',
+  multiLocation: 'Multiple locations',
+};
+
+// Plans and the access states derived from a subscription's dates, for labelling only - the
+// backend decides which state an account is actually in.
+export const PLAN_CODES = ['TRIAL', 'STANDARD', 'PRO'];
+
+export const SUBSCRIPTION_STATE_LABELS = {
+  TRIAL: { label: 'Free trial', color: 'info' },
+  ACTIVE: { label: 'Active', color: 'success' },
+  EXPIRING_SOON: { label: 'Expiring soon', color: 'warning' },
+  GRACE: { label: 'Expired — read only', color: 'error' },
+  EXPIRED: { label: 'Expired', color: 'error' },
+  ON_HOLD: { label: 'On hold', color: 'error' },
+};
