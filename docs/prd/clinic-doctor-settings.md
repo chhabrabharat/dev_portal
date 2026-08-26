@@ -301,3 +301,94 @@ both themes because of the global dark-mode `background-color` override.
 | **P1** | Menu + route gating in `crm_frontend`; Settings UI for clinic preferences; slot-duration resolution end-to-end; public price flags with server-side stripping; the missing slot-length field on each working day |
 | **P2** | Trial / expiry states, banners, read-only enforcement; `dev_portal` admin console |
 | **P3** | `crm_mobile` + `patient_portal` parity; currency setting replacing the `₹` literals; audit log of setting changes |
+
+## 11. Verified against a running stack
+
+The feature was exercised end to end, not just unit-tested. There is no MySQL or Docker daemon in
+the build environment, so the backend was booted on a file-backed H2 database in MySQL compatibility
+mode (`ddl-auto=update` created the whole schema from the entities), seeded with the repo's own
+`DemoDataSeeder` clinics, and driven by the production `crm_frontend` build plus the `dev_portal`
+dev server. Every screenshot below is a real response from that stack.
+
+**Two seeding quirks worth knowing** (both pre-existing): `DemoDataSeeder` runs before
+`initRoles`, so on a genuinely empty database the demo logins are skipped with "ADMIN role not
+found" and only appear on the second start. And `SUPER_ADMIN` was missing from `initRoles`
+entirely — the operator console was unreachable because nobody could be granted a role the
+database had never heard of. That one is fixed as part of this work.
+
+### 11.1 What was checked
+
+| Check | Result |
+|---|---|
+| `POST /auth/login` returns roles, features, settings, subscription | ✅ `roles: [ADMIN]`, 13 flags, `STANDARD/ACTIVE`, resolved settings |
+| `GET /me/bootstrap` answers the same on a cold load | ✅ |
+| `free-slots` without `slotMinutes` (previously a required param) | ✅ 200 — no longer a 400 |
+| Client sends `slotMinutes=15` while overrides are off | ✅ ignored; the doctor's 30-minute working day applied |
+| Clinic enables overrides, staff picks 45 | ✅ 45-minute slots (8 that day, vs 14 at 30) |
+| Clinic enables overrides, staff picks 15 | ✅ 28 slots |
+| Overrides switched back off, client still sends 45 | ✅ ignored again |
+| Nonsense slot length (37) rejected | ✅ 400, "must be one of 10, 15, 20, 30, 45 or 60 minutes" |
+| Clinic switches Invoices off → `GET /api/invoices` | ✅ 403 `FEATURE_DISABLED` (200 before and after) |
+| Prescriptions unaffected by the Invoices flag | ✅ still 200 |
+| Public service prices with visibility on / off | ✅ `800.0, 4500.0, 25000.0` → `null, null, null` |
+| Public consultation fee with visibility on / off | ✅ `500.0` → `null` |
+| Signed-in staff still see both | ✅ prices and fee intact |
+| Doctor overrides the clinic and publishes their fee | ✅ fee returns publicly |
+| Doctor unpublishes their profile | ✅ 404 anonymously, 200 for staff |
+| Trial, 30 days from today | ✅ `TRIAL`, 30 days remaining |
+| Paid plan ending in 3 days | ✅ `EXPIRING_SOON`, writes still allowed |
+| 2 days past expiry (grace 7) | ✅ `GRACE`, reads 200, writes 402 |
+| 20 days past expiry | ✅ `EXPIRED`, blocked, login itself refused with 402 |
+| Operator clears the expiry date | ✅ back to `ACTIVE`, open-ended |
+| Operator sets then lifts a location limit | ✅ 2 → unlimited |
+| Clinic admin calls `/api/admin/accounts` | ✅ 403 |
+| Operator (`SUPER_ADMIN`) calls it | ✅ both clinics listed |
+
+### 11.2 Three defects this found
+
+Running the thing caught what the unit tests did not:
+
+1. **The override switch did nothing.** The working day is the most specific rung of the ladder and
+   won unconditionally — including over a length a member of staff had deliberately picked. Enabling
+   "let staff change the appointment length" changed the picker and nothing else. `getFreeSlots` now
+   takes an explicit force flag for a deliberate choice, and `AppointmentSlotLengthTest` covers all
+   four combinations.
+2. **An expiry date could be set but never cleared.** `updateSubscription` only applied non-null
+   values, so the console's "blank means open-ended" field silently did nothing, and a limit could
+   never be lifted back to unlimited. The request DTO now records which keys were actually present,
+   so a sent null clears rather than being mistaken for an omission.
+3. **Settings stayed writable on a dead account.** The interceptor exempted `/api/settings` so a
+   locked-out clinic could still see its configuration — which also let it keep changing it. Reads
+   and writes now have separate exemption lists.
+
+### 11.3 Screenshots
+
+The images live in the `crm_frontend` copy of this document, under
+`docs/prd/screenshots/` — they are not duplicated into every repo. What each one shows:
+
+Navigation with every module enabled, then with Invoices switched off by the clinic — the entry is
+gone, and a deep link to `/all-invoices` lands on the dashboard with an explanation instead of a 404:
+
+The new Settings tabs — clinic preferences, per-branch overrides, public-page visibility, and the
+clinic's own read-only view of its plan with the module switches:
+
+The slot-length field that was missing from every working day, and the doctor's own settings section:
+
+Trial ending, and the read-only state during grace:
+
+The public doctor page as an anonymous visitor, with prices published and withheld. The fee block and
+every price disappear because the server omits those fields, not because the page hides them:
+
+The operator console — account list and the detail page that owns plan, dates, limits and
+entitlements:
+
+And in dark mode, since the repo's guidance is explicit about checking both themes. The pale band
+behind the card is pre-existing `PageLayout` styling — it appears identically on untouched tabs like
+Change Password — not something these screens introduce:
+
+### 11.4 Still not verified
+
+The mobile app was typechecked but not run — Expo needs a device or emulator. The patient portal
+builds and its gating is the same three lines as the web's, but it was not driven end to end either.
+Neither has been exercised against a real MySQL instance, and the H2 run means any MySQL-specific
+native query (there is one, in `findByContactNumberEndingWith`) went untested.
