@@ -124,6 +124,20 @@ export const fetchUsage = async ({ from, to } = {}) => {
   return data;
 };
 
+/**
+ * Public-page traffic across every clinic.
+ *
+ * <p>The window is a day count rather than a from/to pair, unlike {@link fetchUsage}: this series
+ * always ends today - a traffic chart that stops last Tuesday answers nothing an operator asked -
+ * and the backend clamps the number, so a silly value comes back trimmed rather than as a 400.
+ */
+export const fetchTraffic = async ({ days } = {}) => {
+  const { data } = await api.get('/platform/metrics/traffic', {
+    params: { days: days || undefined },
+  });
+  return data;
+};
+
 export const fetchLeads = async ({ assigned, search } = {}) => {
   const { data } = await api.get('/platform/leads', {
     // assigned is a tri-state: undefined = all, false = unclaimed pool, true = already assigned.
@@ -140,3 +154,48 @@ export const assignLead = async (id, accountId) => {
 };
 
 export default api;
+
+// --- commercial terms and entitlements ------------------------------------------------------
+// These sit under the same /platform/accounts path as the rest of this file: they were originally
+// built against a separate /api/admin surface, which has since been retired in favour of this
+// realm's stricter auth (including the read-only PLATFORM_SUPPORT role).
+
+export const fetchSubscription = async (id) => {
+  const { data } = await api.get(`/platform/accounts/${id}/subscription`);
+  return data;
+};
+
+/**
+ * Only the keys present in `payload` change. A key sent as null clears the value - that is how an
+ * expiry becomes open-ended again and how a limit goes back to unlimited, so the caller must send
+ * an explicit null rather than omitting the field.
+ */
+export const updateSubscription = async (id, payload) => {
+  const { data } = await api.patch(`/platform/accounts/${id}/subscription`, payload);
+  return data;
+};
+
+export const fetchEntitlements = async (id) => {
+  const { data } = await api.get(`/platform/accounts/${id}/entitlements`);
+  return data;
+};
+
+/** The clinic's own module switches, so "not sold" is distinguishable from "the clinic hid it". */
+export const fetchClinicToggles = async (id) => {
+  const { data } = await api.get(`/platform/accounts/${id}/clinic-toggles`);
+  return data;
+};
+
+export const setEntitlement = async (id, feature, enabled) => {
+  const { data } = await api.patch(
+    `/platform/accounts/${id}/entitlements/${feature}`,
+    null,
+    { params: { enabled } },
+  );
+  return data;
+};
+
+export const fetchFeatureKeys = async () => {
+  const { data } = await api.get('/platform/accounts/feature-keys');
+  return data;
+};
