@@ -8,6 +8,7 @@ import LoginPage from './pages/LoginPage';
 import AccountsPage from './pages/AccountsPage';
 import AccountDetailPage from './pages/AccountDetailPage';
 import UsagePage from './pages/UsagePage';
+import TrafficPage from './pages/TrafficPage';
 import LeadsPage from './pages/LeadsPage';
 
 /**
@@ -37,6 +38,7 @@ export default function App() {
       <Route path="/accounts" element={<RequireOperator><AccountsPage /></RequireOperator>} />
       <Route path="/accounts/:id" element={<RequireOperator><AccountDetailPage /></RequireOperator>} />
       <Route path="/usage" element={<RequireOperator><UsagePage /></RequireOperator>} />
+      <Route path="/traffic" element={<RequireOperator><TrafficPage /></RequireOperator>} />
       <Route path="/leads" element={<RequireOperator><LeadsPage /></RequireOperator>} />
       {/* Clinics is the landing view: "which of our customers needs attention" is the first
           question this portal exists to answer. */}

@@ -13,6 +13,9 @@ import { COLORS, LAYOUT, SHADOWS } from '../styles/js/styleConstants';
 const NAV = [
   { to: '/accounts', label: 'Clinics' },
   { to: '/usage', label: 'Usage' },
+  // Next to Usage rather than beside Leads: both answer "is this clinic getting anything out of
+  // us", one from inside the app and one from the public page.
+  { to: '/traffic', label: 'Traffic' },
   { to: '/leads', label: 'Leads' },
 ];
 

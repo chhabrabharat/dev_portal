@@ -124,6 +124,20 @@ export const fetchUsage = async ({ from, to } = {}) => {
   return data;
 };
 
+/**
+ * Public-page traffic across every clinic.
+ *
+ * <p>The window is a day count rather than a from/to pair, unlike {@link fetchUsage}: this series
+ * always ends today - a traffic chart that stops last Tuesday answers nothing an operator asked -
+ * and the backend clamps the number, so a silly value comes back trimmed rather than as a 400.
+ */
+export const fetchTraffic = async ({ days } = {}) => {
+  const { data } = await api.get('/platform/metrics/traffic', {
+    params: { days: days || undefined },
+  });
+  return data;
+};
+
 export const fetchLeads = async ({ assigned, search } = {}) => {
   const { data } = await api.get('/platform/leads', {
     // assigned is a tri-state: undefined = all, false = unclaimed pool, true = already assigned.
