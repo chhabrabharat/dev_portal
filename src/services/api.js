@@ -16,9 +16,51 @@ const OPERATOR_KEY = 'platformOperator';
 // Same env var name as crm_frontend and patient_portal. Falling back to a relative /api (rather
 // than a hardcoded localhost:8080) lets the dev server's package.json "proxy" handle it, and
 // means a same-origin deployment needs no env var at all.
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || '/api';
+
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || '/api',
+  baseURL: API_BASE_URL,
 });
+
+const LOOPBACK = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i;
+
+/**
+ * Whether this bundle was built with an API address that cannot work from where it is being read.
+ *
+ * <p>Create React App bakes {@code REACT_APP_API_BASE_URL} in at build time, so a deployment that
+ * was not given one inherits whatever the build environment had. That is not hypothetical: a
+ * committed `.env` held {@code http://localhost:8080/api}, CRA loads `.env` for builds as well as
+ * for `npm start`, and Vercel's Preview environment does not set the variable - so every preview
+ * deployment of this console shipped calling the reviewer's own machine. On a developer's laptop
+ * the backend was there and it worked; to anyone else the same build produced network errors and
+ * 500s that read exactly like a broken backend. It cost an afternoon of looking in the wrong place.
+ *
+ * <p>So the page says it instead. The check is deliberately narrow - a loopback API address on a
+ * page that is not itself loopback - because that combination is always a build mistake and never
+ * a deliberate choice. Running the dev server against a local backend is the normal case and is
+ * silent.
+ */
+export const apiBaseMisconfigured = (() => {
+  if (typeof window === 'undefined') return null;
+  const pageIsLocal = LOOPBACK.test(window.location.origin);
+  if (!LOOPBACK.test(API_BASE_URL) || pageIsLocal) return null;
+  return {
+    apiBaseUrl: API_BASE_URL,
+    pageOrigin: window.location.origin,
+  };
+})();
+
+if (apiBaseMisconfigured) {
+  // Console as well as on screen: whoever opens devtools on the failing request should find the
+  // reason next to it rather than having to notice a banner further up the page.
+  // eslint-disable-next-line no-console
+  console.error(
+    `[dev_portal] This build calls ${API_BASE_URL}, which is this browser's own machine, but the `
+    + `page is served from ${window.location.origin}. REACT_APP_API_BASE_URL was not set for this `
+    + `deployment. Every request will fail until it is set and the app is rebuilt - the value is `
+    + `baked in at build time, so a redeploy is required, not a restart.`
+  );
+}
 
 export function getToken() {
   try {
