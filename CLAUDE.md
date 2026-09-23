@@ -26,6 +26,37 @@ There is no test script and no lint script — ESLint runs inline via `react-scr
 Needs `health` running on `:8080`. There is no default platform operator; see the end of
 ARCHITECTURE.md for how to create one.
 
+## The backend address is baked in at build time
+
+`REACT_APP_API_BASE_URL` is read by Create React App when the bundle is **built**, not when it is
+loaded. A deployment therefore inherits whatever the build environment had, and changing it needs a
+redeploy rather than a restart.
+
+**Local defaults live in `.env.development`, never in `.env`.** CRA loads `.env` for builds as well
+as for `npm start`; `.env.development` is only ever read by the dev server. That distinction was
+learned the expensive way: a committed `.env` held
+`REACT_APP_API_BASE_URL=http://localhost:8080/api`, Vercel's Production environment set the
+variable and was fine, and Vercel's **Preview** environment did not - so every preview deployment
+of this console shipped calling the reviewer's own machine. On the developer's laptop the backend
+was there and it worked. To anyone else the same build produced network errors and 500s that read
+exactly like a broken backend, and an afternoon went into looking at the backend.
+
+`components/ApiBaseWarning.js` says so on screen now: a loopback API address on a page that is not
+itself loopback is always a build mistake and never a choice. Two things about it are load-bearing:
+
+- **It renders above the router, not inside `AppShell`.** That was the first attempt and it never
+  appeared - with a wrong API address the session check fails, `RequireOperator` redirects to
+  `/login`, and a banner behind the login wall is hidden by exactly the failure it exists to
+  explain. What an operator saw was a sign-in page that silently did nothing.
+- **The check is narrow on purpose.** Running the dev server against a local backend is the normal
+  case and stays silent; verified in a browser both ways, on `localhost` (silent) and on
+  `devportal.localhost` (banner plus a console error).
+
+An unset variable falls back to a relative `/api`, which is correct for a same-origin deployment
+and wrong everywhere else - it reaches the static site and every request 404s into `index.html`.
+That case is deliberately **not** warned about, because it cannot be told apart from the legitimate
+same-origin one. Set the variable in every deployed environment, Preview included.
+
 ## Hard rules
 
 **Never weaken the realm boundary.** This is the only app in the product that reads across

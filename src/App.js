@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import AppShell from './components/AppShell';
+import ApiBaseWarning from './components/ApiBaseWarning';
 import { usePlatformAuth } from './context/PlatformAuthContext';
 import LoginPage from './pages/LoginPage';
 import AccountsPage from './pages/AccountsPage';
@@ -33,16 +34,20 @@ function RequireOperator({ children }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/accounts" element={<RequireOperator><AccountsPage /></RequireOperator>} />
-      <Route path="/accounts/:id" element={<RequireOperator><AccountDetailPage /></RequireOperator>} />
-      <Route path="/usage" element={<RequireOperator><UsagePage /></RequireOperator>} />
-      <Route path="/traffic" element={<RequireOperator><TrafficPage /></RequireOperator>} />
-      <Route path="/leads" element={<RequireOperator><LeadsPage /></RequireOperator>} />
-      {/* Clinics is the landing view: "which of our customers needs attention" is the first
-          question this portal exists to answer. */}
-      <Route path="*" element={<Navigate to="/accounts" replace />} />
-    </Routes>
+    <>
+      {/* Above the router so it survives the redirect to /login - see ApiBaseWarning. */}
+      <ApiBaseWarning />
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/accounts" element={<RequireOperator><AccountsPage /></RequireOperator>} />
+        <Route path="/accounts/:id" element={<RequireOperator><AccountDetailPage /></RequireOperator>} />
+        <Route path="/usage" element={<RequireOperator><UsagePage /></RequireOperator>} />
+        <Route path="/traffic" element={<RequireOperator><TrafficPage /></RequireOperator>} />
+        <Route path="/leads" element={<RequireOperator><LeadsPage /></RequireOperator>} />
+        {/* Clinics is the landing view: "which of our customers needs attention" is the first
+            question this portal exists to answer. */}
+        <Route path="*" element={<Navigate to="/accounts" replace />} />
+      </Routes>
+    </>
   );
 }
