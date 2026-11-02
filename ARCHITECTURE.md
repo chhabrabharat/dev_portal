@@ -80,7 +80,10 @@ src/
     AccountsPage.js       R1 — clinics list
     AccountDetailPage.js  R2/R3 — detail + status dialog
     UsagePage.js          R4 — cross-clinic usage
-    LeadsPage.js          R5 — lead inbox
+    LeadsPage.js          R5 — lead inbox (contact-us enquiries handed to clinics)
+    PipelinePage.js       sales pipeline board (clinics the company sells to)
+  components/pipeline/    board, card, detail dialog, needs-action panel, cold-pool drawer
+  utils/pipeline.js       IST date helpers for the board
   styles/js/
     styleConstants.js  VERBATIM copy of crm_frontend's tokens
     adminTokens.js     portal-only additions

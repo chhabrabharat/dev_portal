@@ -110,6 +110,9 @@ Concretely, on the `health` backend:
      `whatsappNotifications`, `aiAssistant`, `multiLocation`).
   4. **Lead assignment** — `PUT /platform/leads/{id}/assignment` (already exists; triage is the
      company's job).
+  5. **Sales pipeline** — the `sales_stage` / `sales_lead` / `sales_lead_history` /
+     `sales_cold_lead` tables and `PlatformUser.pipelineReminder`, via `/platform/pipeline/**`.
+     These are platform-side tables with no account link; nothing clinic-facing reads them.
 - Add **new** read-only platform endpoints, new platform-side columns/tables, and new
   `PlatformXxx` controllers/services/DTOs under the platform package.
 
@@ -189,6 +192,43 @@ semantic change of an existing field.
 - [ ] `PLATFORM_SUPPORT` cannot perform the new write (server-side check present).
 - [ ] If a shared file had to change, the summary lists it explicitly with the reason and the
       clients affected.
+
+## Pipeline
+
+`pages/PipelinePage.js` is the company's sales board - clinics being **sold to** - backed by
+`/api/platform/pipeline/**` (`PlatformPipelineController` / `PlatformPipelineService`). It is a
+different thing from `pages/LeadsPage.js`, which is the contact-us inbox of patient enquiries
+handed to clinics; both happen to be called "leads", which is why the nav says "Pipeline".
+
+Things that are deliberate:
+
+- **Stages are rows, not an enum.** `PlatformPipelineService.seedDefaultStages()` creates the
+  eleven defaults once on an empty table; rename or reorder in the database and the board follows.
+  The rules key on `SalesStage.kind` (OPEN / ONBOARDING / LIVE / ON_HOLD / LOST) and
+  `SalesStage.milestone`, never on a stage's name, so a rename cannot break them.
+- **"Not Interested" means Lost**, applied server-side in `patch()`. Setting the flag back does
+  not leave Lost. The dialog warns before saving.
+- **Dates are the server's Asia/Kolkata `today`** from the board payload, compared as ISO
+  strings in `utils/pipeline.js`. The browser's clock is never consulted, so the overdue colouring
+  on screen and the 08:00 IST reminder always agree.
+- **The board polls `GET /pipeline/board` every 20s** (paused when the tab is hidden) - the app
+  has no websocket and a handful of operators does not justify building one. Writes merge the
+  returned row in immediately and trigger a silent refetch.
+- **Edits save a PATCH of only the changed keys** (`LeadDialog` diffs the form against the
+  loaded detail), so two operators editing different fields of one lead don't clobber each other.
+  Same absent-vs-null contract as the subscription PATCH.
+- **Reminders are email only**, to `PlatformUser.email`, because it is the only channel that can
+  address a platform operator (push subscriptions hang off clinic users). A lead with no owner
+  goes to every active PLATFORM_ADMIN. Nothing is sent when nothing is due, or when SMTP is not
+  configured - the switch on the page says which. `PlatformPipelineReminderService` runs under
+  `SchedulingConfig`, so `APP_SCHEDULING_ENABLED=false` silences it with everything else.
+- **A deleted lead that came from the cold pool returns to the pool** - the pool row is kept and
+  only `SalesLead.coldLead` (unique) marks it as taken. That is also what makes "add once" hold.
+- **The import is re-runnable**: `scripts/import_leads.py` maps the tracker sheet onto
+  `POST /pipeline/import`, which matches warm rows by `externalKey` and cold rows by `sourceId`,
+  and never moves a lead an operator has since worked.
+
+Backend rules are covered by `PlatformPipelineServiceTest` (H2); keep it passing.
 
 ## Wide tables
 

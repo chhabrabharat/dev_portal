@@ -241,3 +241,81 @@ export const fetchFeatureKeys = async () => {
   const { data } = await api.get('/platform/accounts/feature-keys');
   return data;
 };
+
+// --- sales pipeline ------------------------------------------------------------------------
+// /platform/pipeline/** is the company's own sales board (clinics being sold to). Distinct from
+// /platform/leads, which is the contact-us inbox of patient enquiries handed to clinics.
+
+/** Stages, owners, every lead and the top-strip counts in one call. The page polls this. */
+export const fetchPipelineBoard = async () => {
+  const { data } = await api.get('/platform/pipeline/board');
+  return data;
+};
+
+export const fetchPipelineLead = async (id) => {
+  const { data } = await api.get(`/platform/pipeline/leads/${id}`);
+  return data;
+};
+
+export const createPipelineLead = async (payload) => {
+  const { data } = await api.post('/platform/pipeline/leads', payload);
+  return data;
+};
+
+/** Only the keys present in `payload` change; an explicit null clears a value. */
+export const patchPipelineLead = async (id, payload) => {
+  const { data } = await api.patch(`/platform/pipeline/leads/${id}`, payload);
+  return data;
+};
+
+export const movePipelineLead = async (id, stageId) => {
+  const { data } = await api.put(`/platform/pipeline/leads/${id}/stage`, { stageId });
+  return data;
+};
+
+export const setPipelineAction = async (id, nextAction, nextActionDue) => {
+  const { data } = await api.put(`/platform/pipeline/leads/${id}/action`, { nextAction, nextActionDue });
+  return data;
+};
+
+export const completePipelineAction = async (id) => {
+  const { data } = await api.post(`/platform/pipeline/leads/${id}/action/done`);
+  return data;
+};
+
+export const addPipelineNote = async (id, text) => {
+  const { data } = await api.post(`/platform/pipeline/leads/${id}/notes`, { text });
+  return data;
+};
+
+export const deletePipelineLead = async (id) => {
+  await api.delete(`/platform/pipeline/leads/${id}`);
+};
+
+export const fetchColdPool = async ({ search, category } = {}) => {
+  const { data } = await api.get('/platform/pipeline/cold', {
+    params: { search: search || undefined, category: category || undefined },
+  });
+  return data;
+};
+
+export const addColdLeadToPipeline = async (coldId) => {
+  const { data } = await api.post(`/platform/pipeline/cold/${coldId}/add`);
+  return data;
+};
+
+export const fetchReminderSetting = async () => {
+  const { data } = await api.get('/platform/pipeline/reminder-setting');
+  return data;
+};
+
+export const updateReminderSetting = async (channel) => {
+  const { data } = await api.put('/platform/pipeline/reminder-setting', { channel });
+  return data;
+};
+
+/** Re-runnable import from the lead tracker sheet - see scripts/import-leads.js. */
+export const importPipeline = async (payload) => {
+  const { data } = await api.post('/platform/pipeline/import', payload);
+  return data;
+};

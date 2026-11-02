@@ -17,6 +17,10 @@ const NAV = [
   // us", one from inside the app and one from the public page.
   { to: '/traffic', label: 'Traffic' },
   { to: '/leads', label: 'Leads' },
+  // The company's own sales board. "Leads" above is the contact-us inbox (patient enquiries
+  // handed to clinics); this is clinics the company is selling to. Two different things that
+  // both happen to be called leads, hence the different label.
+  { to: '/pipeline', label: 'Pipeline' },
 ];
 
 export default function AppShell({ children }) {
@@ -55,7 +59,7 @@ export default function AppShell({ children }) {
           <Tooltip
             title={
               canWrite
-                ? 'PLATFORM_ADMIN - may change clinic status and assign leads'
+                ? 'PLATFORM_ADMIN - may change clinic status, assign leads and work the pipeline'
                 : 'PLATFORM_SUPPORT - read-only; write actions are disabled'
             }
           >

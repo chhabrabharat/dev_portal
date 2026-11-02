@@ -66,3 +66,42 @@ export const SUBSCRIPTION_STATE_LABELS = {
   EXPIRED: { label: 'Expired', color: 'error' },
   ON_HOLD: { label: 'On hold', color: 'error' },
 };
+
+// --- sales pipeline ------------------------------------------------------------------------
+// Labels for the SalesLead enums. Keys are the backend's wire names.
+
+export const PIPELINE_SOURCES = {
+  NETWORK_REFERRAL: { label: 'Network Referral', short: 'Referral' },
+  INBOUND_ENQUIRY: { label: 'Inbound Enquiry', short: 'Enquiry' },
+  GOOGLE_COLD: { label: 'Google (cold)', short: 'Google' },
+  OTHER: { label: 'Other', short: 'Other' },
+};
+
+export const PIPELINE_CATEGORIES = {
+  CLINIC: 'Clinic',
+  HOSPITAL: 'Hospital',
+};
+
+export const PIPELINE_INTEREST = {
+  INTERESTED: { label: 'Interested', fg: '#065f46', bg: '#d1fae5' },
+  NOT_INTERESTED: { label: 'Not Interested', fg: '#7f1d1d', bg: '#fee2e2' },
+};
+
+/**
+ * Column accent by stage kind, not by stage name - stages are data and can be renamed, but the
+ * kind is what the backend keys its rules on, so colouring by it keeps the board honest.
+ */
+export const PIPELINE_KIND_COLORS = {
+  OPEN: COLORS.primary,
+  ONBOARDING: '#7c3aed',
+  LIVE: COLORS.success,
+  ON_HOLD: COLORS.warning,
+  LOST: COLORS.textMuted,
+};
+
+/** Due-date chips on cards and in the needs-action panel. */
+export const DUE_COLORS = {
+  overdue: { fg: '#7f1d1d', bg: '#fee2e2' },
+  today: { fg: '#92400e', bg: '#fef3c7' },
+  later: { fg: COLORS.textSecondary, bg: '#f1f5f9' },
+};

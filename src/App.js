@@ -11,6 +11,7 @@ import AccountDetailPage from './pages/AccountDetailPage';
 import UsagePage from './pages/UsagePage';
 import TrafficPage from './pages/TrafficPage';
 import LeadsPage from './pages/LeadsPage';
+import PipelinePage from './pages/PipelinePage';
 
 /**
  * Route guard. Purely a UX convenience - every /api/platform/** route independently requires a
@@ -44,6 +45,8 @@ export default function App() {
         <Route path="/usage" element={<RequireOperator><UsagePage /></RequireOperator>} />
         <Route path="/traffic" element={<RequireOperator><TrafficPage /></RequireOperator>} />
         <Route path="/leads" element={<RequireOperator><LeadsPage /></RequireOperator>} />
+        {/* Sales pipeline - clinics we sell to. Not the same thing as /leads (contact-us inbox). */}
+        <Route path="/pipeline" element={<RequireOperator><PipelinePage /></RequireOperator>} />
         {/* Clinics is the landing view: "which of our customers needs attention" is the first
             question this portal exists to answer. */}
         <Route path="*" element={<Navigate to="/accounts" replace />} />
