@@ -134,6 +134,11 @@ clinic seeder, which runs on every boot, this one is off unless explicitly enabl
 password. A known-password account that can read every clinic's patient data is a different risk
 class from a demo dentist login.
 
+**Testing phase (Nov 2026):** `health` seeds a hardcoded `dev` / `dev` PLATFORM_ADMIN on every boot
+unless `APP_PLATFORM_SEED_TESTING_LOGIN=false`. It is created once and never overwritten, so
+`UPDATE platform_user SET active = 0 WHERE username = 'dev'` retires it. Turn the flag off and
+deactivate the row before real customer data lives on a server.
+
 Locally, boot `health` with `APP_PLATFORM_SEED_ENABLED=true` and `APP_PLATFORM_SEED_PASSWORD=...`.
 In a deployed environment, insert the row by hand and set `JWT_PLATFORM_SECRET` — the default
 platform signing key is a literal in committed source and is dev-only.
