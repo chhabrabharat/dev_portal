@@ -127,7 +127,22 @@ semantic change of an existing field.
    the `devadmin` `PLATFORM_ADMIN` operator (created once, never overwritten).
 3. `npm install && npm start` → http://localhost:3002.
 
-## 6. Before you finish a task
+## 6. Session setup and permissions
+
+- Tool permissions are pre-granted in `.claude/settings.json` (`permissions.allow`): file
+  read/edit/write in this repo, `npm`/`npx`/`node`, non-destructive `git` incl. push, Maven/Java
+  for running `health`, `curl` to localhost, and web fetches to GitHub / MUI / Spring docs.
+  Force-push, hard reset, and reading `.env` are denied. Do not ask for these; just proceed.
+- On a new session, clone or attach both repos without asking: `chhabrabharat/dev_portal`
+  (this repo, default branch `feature/platform-admin-portal`) and the `health` backend
+  (`~/Desktop/DocProject/health` on the user's Mac). Commit and push to the current branch
+  when a task is done — the user expects it (a stop hook checks for uncommitted work).
+- If a sibling repo (`crm_frontend`, `crm_mobile`, `patient_portal`) is needed, it is
+  **read-only** for grep/reference. Never commit to it from a dev_portal task.
+- Anything not covered by `settings.json` that needs approval (a new domain, a destructive
+  command) is a signal to pause and ask, not to find a workaround.
+
+## 7. Before you finish a task
 
 - [ ] Every backend diff is under the platform package or an additive, nullable change — grep
       the diff for files outside it and justify each one.
@@ -137,7 +152,7 @@ semantic change of an existing field.
 - [ ] If a shared file had to change, the summary lists it explicitly with the reason and the
       clients affected.
 
-## 7. Specs
+## 8. Specs
 
 - `docs/prd/clinic-doctor-settings.md` — settings model, feature flags, subscription/expiry,
   which keys are platform-owned (§4.1) vs clinic-owned (§4.2–4.4).
