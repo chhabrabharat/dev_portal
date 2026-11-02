@@ -39,18 +39,20 @@ WARM_COLUMNS = [
     (("address", "area", "location"), "address"),
     (("source",), "source"),
     (("referred", "referrer", "referral"), "referredBy"),
+    # The sheet's "Owner" column is the clinic's doctor, not a team member, so it is NOT mapped
+    # onto the pipeline owner (a platform operator); "Contact Person" carries the same name.
     (("contact person", "contact", "person"), "contactPerson"),
     (("interested", "interest"), "interested"),
     (("stage", "status"), "stage"),
     (("next action", "action"), "nextAction"),
-    (("due", "follow up date", "follow-up date", "followup"), "nextActionDue"),
+    (("next follow-up", "next follow up", "action due date", "follow up date"), "nextActionDue"),
     (("notes", "remarks", "comment"), "notes"),
     (("added", "created", "date added"), "addedOn"),
     (("contacted",), "contactedOn"),
     (("demo",), "demoOn"),
     (("onboard",), "onboardingOn"),
-    (("training", "setup"), "trainingDoneOn"),
-    (("live", "go-live", "go live"), "goLiveOn"),
+    (("staff trained", "trained", "training done"), "trainingDoneOn"),
+    (("go-live", "go live", "went live"), "goLiveOn"),
 ]
 
 COLD_COLUMNS = [
@@ -72,17 +74,26 @@ def norm(s):
 
 
 def map_headers(headers, spec):
-    """Column index -> field, matching each field once, most specific keyword first."""
+    """
+    Column index -> field, matching each field once. An exact header match wins over a
+    contains-match anywhere in the row, so "Notes" is not taken by "Adoption / Experience Notes".
+    """
     mapping, used = {}, set()
     for keywords, field in spec:
-        for i, h in enumerate(headers):
-            hn = norm(h)
-            if i in used or not hn:
-                continue
-            if any(k == hn or k in hn for k in keywords):
-                mapping[i] = field
-                used.add(i)
+        found = None
+        for exact in (True, False):
+            for i, h in enumerate(headers):
+                hn = norm(h)
+                if i in used or not hn:
+                    continue
+                if any((k == hn) if exact else (k in hn) for k in keywords):
+                    found = i
+                    break
+            if found is not None:
                 break
+        if found is not None:
+            mapping[found] = field
+            used.add(found)
     unknown = [headers[i] for i in range(len(headers)) if i not in used and norm(headers[i])]
     return mapping, unknown
 
@@ -124,12 +135,22 @@ def slug(name):
 
 
 def read_sheet(wb, wanted):
+    """Header is the row whose first cell is "Lead ID" (the sheets carry two title rows above it)."""
     for ws in wb.worksheets:
         if wanted in norm(ws.title):
             rows = list(ws.iter_rows(values_only=True))
-            if not rows:
-                return [], []
-            return list(rows[0]), rows[1:]
+            for n, r in enumerate(rows):
+                if norm(r[0]) == "lead id":
+                    # Stop at a repeated header block; skip the legend row if it recurs.
+                    body = []
+                    for d in rows[n + 1:]:
+                        if norm(d[0]) == "lead id":
+                            break
+                        if str(d[0] or "").startswith("Blue = inputs"):
+                            continue
+                        body.append(d)
+                    return list(r), body
+            sys.exit(f"Sheet '{ws.title}' has no 'Lead ID' header row")
     sys.exit(f"No sheet named like '{wanted}' in the workbook (found: {[w.title for w in wb.worksheets]})")
 
 
@@ -150,7 +171,7 @@ def build(path):
                 out[field] = as_date(v)
             else:
                 out[field] = as_text(v)
-        out["externalKey"] = out.get("externalKey") or "warm:" + slug(out["name"])
+        out["externalKey"] = "tracker:" + (out.get("externalKey") or slug(out["name"]))
         warm.append(out)
 
     headers, rows = read_sheet(wb, "cold")
