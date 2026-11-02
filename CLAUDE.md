@@ -86,6 +86,110 @@ state; never coerce it to `NEW` and never filter those accounts out.
 **Don't add global element selectors to `index.css`.** `crm_frontend` has a broad-selector dark
 mode background override that has caused real bugs. This app has no dark mode and no such rule.
 
+## Working on the `health` backend for this portal
+
+**Work for this portal must not change any behaviour that `crm_frontend`, `crm_mobile` or
+`patient_portal` depend on.**
+
+Concretely, on the `health` backend:
+
+### Allowed
+
+- **Read** anything from the database through the platform realm — accounts, locations, users,
+  doctors, patients (counts/aggregates only), appointments, leads, usage metrics, subscriptions,
+  entitlements, clinic toggles, feature keys.
+- **Write** only these, and only via `/api/platform/**` endpoints:
+  1. **Account settings / lifecycle** — `Account.status` (`NEW` / `ACTIVE` / `ON_HOLD` /
+     `INACTIVE`) and other account-level fields the portal owns.
+  2. **Plan / subscription** — `AccountSubscription`: `planCode`, `trialDays`,
+     `trialStartedAt`, `expiresAt`, `gracePeriodDays`, and limits `maxLocations` /
+     `maxUsers` / `maxProviders`.
+  3. **Feature enable / disable** — `AccountFeature.enabledByPlatform` for a feature key
+     (`prescriptions`, `invoices`, `medicines`, `diagnosticTests`, `consultations`, `reports`,
+     `reviews`, `patientDocuments`, `publicDoctorProfiles`, `patientPortal`,
+     `whatsappNotifications`, `aiAssistant`, `multiLocation`).
+  4. **Lead assignment** — `PUT /platform/leads/{id}/assignment` (already exists; triage is the
+     company's job).
+- Add **new** read-only platform endpoints, new platform-side columns/tables, and new
+  `PlatformXxx` controllers/services/DTOs under the platform package.
+
+### Not allowed
+
+- Changing, renaming, or removing any non-platform controller, service, DTO, entity field,
+  validation rule, or response shape that `crm_frontend` / `crm_mobile` / `patient_portal` call.
+  This includes `/auth/**`, `/me/bootstrap`, `/accounts/**`, `/account-locations/**`,
+  `/service-providers/**`, `/appointments/**`, `/patients/**`, `/invoices/**`,
+  `/prescriptions/**`, and everything else outside `/api/platform/**`.
+- Writing `AccountFeature.enabledByClinic` or any `AccountSettings` /
+  `AccountLocationSettings` / `ServiceProviderSettings` row. Those belong to the clinic admin
+  (`crm_frontend`). The portal may **display** `clinic-toggles` so "not sold" is distinguishable
+  from "clinic hid it", but never flips them.
+- Resetting or setting any clinic user's password, or creating clinic users.
+- Returning patient clinical data (records, prescriptions, consultation notes) from any platform
+  endpoint — counts and aggregates only.
+- Touching the clinic/patient JWT realm, `AuthContext`-related login responses, or
+  `CurrentUserService`. Platform auth lives in `PlatformJwtFilter` /
+  `CurrentPlatformUserService` and stays separate.
+- Changing `spring.jpa.hibernate.ddl-auto`, shared `application*.properties` defaults, or
+  seeders other than `PlatformDevDataSeeder`.
+- Editing `src/styles/js/styleConstants.js` here (it is a verbatim copy of `crm_frontend`'s and
+  the diff is the drift check). Portal-only tokens go in `adminTokens.js`.
+
+### If a change genuinely needs something outside the allowed list
+
+**Stop and flag it** before writing code. State:
+
+- which file / endpoint / column outside the allowed surface you need to change,
+- which of `crm_frontend`, `crm_mobile`, `patient_portal` call it (grep their `services/api.js`
+  / `api/client.ts`),
+- the backward-compatible alternative (new platform endpoint, new nullable column, additive DTO
+  field) if one exists.
+
+Default to the additive alternative. Only proceed with a shared-code change after the user
+confirms, and keep it additive (new optional field, new endpoint) — never a rename, removal, or
+semantic change of an existing field.
+
+### Backend conventions when adding to the platform realm
+
+- Package: put new code next to the existing `Platform*` classes (`PlatformAccountController`,
+  `PlatformLeadController`, `PlatformMetricsController`, `CurrentPlatformUserService`,
+  `PlatformJwtFilter`, `PlatformDevDataSeeder`). Follow their naming.
+- Every write goes through `CurrentPlatformUserService.assertCanWrite()` so
+  `PLATFORM_SUPPORT` stays read-only. The UI disabling a button is a courtesy, not a control.
+- New entities/columns must be **nullable with a safe default** so `ddl-auto=update` can create
+  them and existing rows don't regress. If existing rows need a value, write the backfill SQL
+  and say so in the PR/summary — there is no migration tool.
+- Null `Account.status` is a real state ("signed up, never triaged"); do not coerce it to `NEW`.
+- Partial updates (`PATCH …/subscription`) change only keys present in the payload; an explicit
+  `null` clears a value. Do not change that contract.
+- Feature enforcement for clinics stays where it is (`403 FEATURE_DISABLED`,
+  `402 ACCOUNT_EXPIRED`). The portal toggles entitlements; it does not reimplement gating.
+
+## Session setup and permissions
+
+- Tool permissions are pre-granted in `.claude/settings.json` (`permissions.allow`): file
+  read/edit/write in this repo, `npm`/`npx`/`node`, non-destructive `git` incl. push, Maven/Java
+  for running `health`, `curl` to localhost, and web fetches to GitHub / MUI / Spring docs.
+  Force-push, hard reset, and reading `.env` are denied. Do not ask for these; just proceed.
+- On a new session, clone or attach both repos without asking: `chhabrabharat/dev_portal`
+  (this repo; `main` is the integration branch) and the `health` backend
+  (`~/Desktop/DocProject/health` on the user's Mac). Commit and push to the current branch
+  when a task is done — the user expects it (a stop hook checks for uncommitted work).
+- If a sibling repo (`crm_frontend`, `crm_mobile`, `patient_portal`) is needed, it is
+  **read-only** for grep/reference. Never commit to it from a dev_portal task.
+- Anything not covered by `settings.json` that needs approval (a new domain, a destructive
+  command) is a signal to pause and ask, not to find a workaround.
+
+## Before you finish a task
+
+- [ ] Every backend diff is under the platform package or an additive, nullable change — grep
+      the diff for files outside it and justify each one.
+- [ ] No endpoint outside `/api/platform/**` changed shape.
+- [ ] No write to clinic-owned settings/toggles, passwords, or clinical data.
+- [ ] `PLATFORM_SUPPORT` cannot perform the new write (server-side check present).
+- [ ] If a shared file had to change, the summary lists it explicitly with the reason and the
+      clients affected.
+
 ## Wide tables
 
 The clinics and usage tables set an explicit `minWidth` and let their container scroll

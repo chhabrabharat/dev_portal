@@ -403,3 +403,61 @@ The mobile app was typechecked but not run — Expo needs a device or emulator. 
 builds and its gating is the same three lines as the web's, but it was not driven end to end either.
 Neither has been exercised against a real MySQL instance, and the H2 run means any MySQL-specific
 native query (there is one, in `findByContactNumberEndingWith`) went untested.
+
+---
+
+## 12. Follow-up: the clinic default was still not reaching anyone
+
+Reported after release: *"When I change appointment duration to 15 mins, not showing slots
+accordingly."* Reproduced on the live stack — the clinic setting was 15, the doctor's own default was
+15, `GET /api/settings/slot-policy` resolved 15, and `free-slots` still returned 30-minute slots.
+
+### 12.1 Cause
+
+The ladder was working exactly as specified. Every one of the doctor's five working days carried
+`slotDurationMinutes = 30`, and the working day is the most specific rung, so it won — as designed.
+
+Nobody had chosen that 30. `AddServiceProvider.js` stamped a literal `30` onto every working day it
+created, in three places (`getDefaultValues`, `addWorkingDay`, and the availability checkbox
+handler). Before §10 added the field there was no UI for the value, so *every working day in every
+clinic* carried a permanent override, and the clinic- and doctor-level defaults could never apply to
+anything. §10's new field made the value visible and editable; it did not stop the form from
+inventing it.
+
+This is the failure mode §11.2 is about, one rung further down: a setting that resolves correctly and
+still governs nothing.
+
+### 12.2 Changes
+
+| Where | Change |
+| --- | --- |
+| `crm_frontend` `pages/AddServiceProvider.js` | new and reset working days are created with `slotDurationMinutes: null` — "follow the doctor's default" — instead of `30` |
+| `crm_frontend` `pages/AddServiceProvider.js` | the Slot Length picker states what inheriting resolves to (`Using 15 minutes, from the doctor or clinic settings`), so the empty option is a number rather than a promise |
+| `health` `SettingsService` | `slotOverrides(accountId)` lists the doctors whose working days state a length of their own; `clearSlotOverrides(accountId, providerId)` nulls them |
+| `health` `SettingsController` | `GET /api/settings/slot-overrides`, `DELETE /api/settings/slot-overrides?serviceProviderId=` (clinic admin; a write, so the account guard blocks it during grace) |
+| `crm_frontend` `pages/settings/ClinicPreferences.js` | when overrides exist, the appointment-length field carries a warning naming the doctors and days, with a **Use the clinic default** action that clears them |
+
+Clearing is the only bulk operation offered. Writing one chosen length across every working day would
+put the app straight back into the state this section exists to fix, at a different number.
+
+### 12.3 Existing data
+
+The frontend fix only governs days created from now on. Every working day already stored still holds
+its explicit `30`, so **an existing clinic sees no change until the overrides are cleared** — either
+per day on the doctor's Availability tab, or in one action from Clinic Preferences. No migration is
+shipped: nulling a column across live tenant data is an operator decision, and the same effect is now
+available in the UI to whoever owns the clinic.
+
+### 12.4 Verification
+
+| Check | Result |
+| --- | --- |
+| `SettingsServiceTest` — only overriding doctors listed, distinct minutes ascending | ✅ 16 tests pass |
+| `SettingsServiceTest` — clearing nulls every stated day and reports the count | ✅ |
+| `SettingsServiceTest` — clearing for one doctor never reads another's days | ✅ |
+| `AppointmentSlotLengthTest` (all four override combinations) still green | ✅ 4 tests |
+| `SubscriptionServiceTest` unaffected | ✅ 10 tests |
+| `CI=true npm run build` | ✅ compiled, no ESLint errors |
+
+The 18 pre-existing errors in `WhatsappBotServiceTest` / `ReviewServiceTest` are unchanged and
+unrelated; they fail identically on `main` without this change.
