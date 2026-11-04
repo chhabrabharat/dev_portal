@@ -203,9 +203,18 @@ handed to clinics; both happen to be called "leads", which is why the nav says "
 Things that are deliberate:
 
 - **Stages are rows, not an enum.** `PlatformPipelineService.seedDefaultStages()` creates the
-  eleven defaults once on an empty table; rename or reorder in the database and the board follows.
+  nine defaults once on an empty table; rename or reorder in the database and the board follows.
   The rules key on `SalesStage.kind` (OPEN / ONBOARDING / LIVE / ON_HOLD / LOST) and
   `SalesStage.milestone`, never on a stage's name, so a rename cannot break them.
+- **Retired stages are switched off, not deleted.** `RETIRED_STAGES` in the service names a
+  stage and where its leads go (Negotiation → Demo Done, Training → Onboarding); on boot the
+  leads are moved with a `system` history line, stage-since untouched, and the row set inactive.
+  To retire another stage, add it to that map. History rows name stages by name, so a retired
+  one still reads correctly.
+- **On Hold and Lost are a separate tab**, not columns on the working board - the board is seven
+  columns so a laptop shows all of them at once (columns share the row from `md` up, fixed-width
+  swipes on a phone). The next-stage arrow is computed from *all* active stages, not the visible
+  ones. Leads reach On Hold / Lost through the Stage dropdown or the Not-Interested rule.
 - **"Not Interested" means Lost**, applied server-side in `patch()`. Setting the flag back does
   not leave Lost. The dialog warns before saving.
 - **Dates are the server's Asia/Kolkata `today`** from the board payload, compared as ISO

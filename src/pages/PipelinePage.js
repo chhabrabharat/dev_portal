@@ -28,6 +28,9 @@ import LeadDialog from '../components/pipeline/LeadDialog';
 // building a push channel for a team of a handful. Paused while the tab is hidden.
 const POLL_MS = 20000;
 
+// The two "parked" kinds live on their own tab so the working board fits on one screen.
+const PARKED_KINDS = ['ON_HOLD', 'LOST'];
+
 const STAT_KEYS = [
   ['active', 'Active'], ['demos', 'Demos'], ['interested', 'Interested'], ['onboarding', 'Onboarding'],
   ['live', 'Live'], ['actionsDue', 'Actions due'], ['coldPool', 'In cold pool'],
@@ -83,11 +86,18 @@ export default function PipelinePage() {
   const stages = useMemo(() => board?.stages || [], [board]);
   const stagesById = useMemo(() => Object.fromEntries(stages.map((s) => [s.id, s])), [stages]);
   const today = board?.today;
+  const parked = pool === 'parked';
+  const visibleStages = useMemo(
+    () => stages.filter((s) => PARKED_KINDS.includes(s.kind) === parked),
+    [stages, parked]
+  );
 
   const visibleLeads = useMemo(() => {
     if (!board) return [];
     const q = search.trim().toLowerCase();
     return board.leads.filter((l) => {
+      const stage = stagesById[l.stageId];
+      if (!stage || PARKED_KINDS.includes(stage.kind) !== parked) return false;
       if (pool === 'warm' && isColdLead(l)) return false;
       if (pool === 'cold' && !isColdLead(l)) return false;
       if (dueOnly && !isActionDue(l, today, stagesById)) return false;
@@ -95,7 +105,7 @@ export default function PipelinePage() {
       return [l.name, l.type, l.contactPerson, l.ownerName, l.referredBy, l.phone]
         .filter(Boolean).join(' ').toLowerCase().includes(q);
     });
-  }, [board, search, pool, dueOnly, today, stagesById]);
+  }, [board, search, pool, parked, dueOnly, today, stagesById]);
 
   const leadsByStage = useMemo(() => {
     const by = {};
@@ -191,6 +201,7 @@ export default function PipelinePage() {
           <ToggleButton value="all">All</ToggleButton>
           <ToggleButton value="warm">Warm</ToggleButton>
           <ToggleButton value="cold">Cold</ToggleButton>
+          <ToggleButton value="parked">On hold / Lost</ToggleButton>
         </ToggleButtonGroup>
         <ToggleButton size="small" value="due" selected={dueOnly} onChange={() => setDueOnly((d) => !d)} aria-label="Only leads with actions due">
           Actions due
@@ -240,7 +251,8 @@ export default function PipelinePage() {
           />
 
           <PipelineBoard
-            stages={stages}
+            stages={visibleStages}
+            allStages={stages}
             leadsByStage={leadsByStage}
             today={today}
             canWrite={canWrite}
@@ -249,9 +261,14 @@ export default function PipelinePage() {
             onMove={move}
           />
 
-          {board.leads.length === 0 && (
+          {board.leads.length === 0 && !parked && (
             <Typography variant="body2" sx={{ color: COLORS.textMuted, textAlign: 'center', py: 4 }}>
               No leads yet. Add one with "+ New lead" or pull one from the cold pool.
+            </Typography>
+          )}
+          {parked && (
+            <Typography variant="caption" sx={{ color: COLORS.textMuted, display: 'block', mt: 1 }}>
+              Parked leads. To bring one back, open it and pick a stage.
             </Typography>
           )}
         </>

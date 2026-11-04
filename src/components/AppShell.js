@@ -39,7 +39,7 @@ export default function AppShell({ children }) {
             Dev Portal
           </Typography>
 
-          <Box sx={{ display: 'flex', gap: 0.5, flexGrow: 1 }}>
+          <Box sx={{ display: 'flex', gap: 0.5, flexGrow: 1, flexWrap: 'wrap' }}>
             {NAV.map((item) => (
               <Button
                 key={item.to}

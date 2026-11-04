@@ -10,7 +10,12 @@ import { PIPELINE_KIND_COLORS } from '../../styles/js/adminTokens';
 import LeadCard from './LeadCard';
 
 const PAGE = 30;
+// On a phone a column is a fixed swipe-width; from md up the columns share the row so the
+// whole working board (seven columns) is visible at once on a laptop without scrolling.
 const COLUMN_WIDTH = 272;
+const COLUMN_MIN = 158;
+// ...and a ceiling, so a two-column view (On hold / Lost) doesn't stretch each to half the screen.
+const COLUMN_MAX = 360;
 
 /**
  * The columns. Horizontal scroll with snap, so on a phone each swipe lands on a column rather
@@ -18,15 +23,15 @@ const COLUMN_WIDTH = 272;
  * sideways, only this container does.
  *
  * `flow` is the ordered list of stages a lead advances through with the arrow button - every
- * non-terminal stage up to Live, in board order. On Hold and Lost are destinations you drag to,
- * not somewhere "next" leads.
+ * non-terminal stage up to Live, in board order. It comes from `allStages`, not the columns on
+ * screen, so the arrow still knows the next stage when the board is showing a subset.
  */
-export default function PipelineBoard({ stages, leadsByStage, today, canWrite, onOpen, onAdd, onMove }) {
+export default function PipelineBoard({ stages, allStages, leadsByStage, today, canWrite, onOpen, onAdd, onMove }) {
   const [dragId, setDragId] = useState(null);
   const [overStage, setOverStage] = useState(null);
   const [limits, setLimits] = useState({});
 
-  const flow = stages.filter((s) => s.kind === 'OPEN' || s.kind === 'ONBOARDING' || s.kind === 'LIVE');
+  const flow = (allStages || stages).filter((s) => s.kind === 'OPEN' || s.kind === 'ONBOARDING' || s.kind === 'LIVE');
   const nextOf = (stageId) => {
     const i = flow.findIndex((s) => s.id === stageId);
     return i >= 0 && i < flow.length - 1 ? flow[i + 1] : null;
@@ -42,7 +47,7 @@ export default function PipelineBoard({ stages, leadsByStage, today, canWrite, o
       aria-label="Pipeline board"
       sx={{
         display: 'flex',
-        gap: 1.5,
+        gap: { xs: 1.5, md: 1 },
         overflowX: 'auto',
         alignItems: 'flex-start',
         pb: 1.5,
@@ -78,11 +83,13 @@ export default function PipelineBoard({ stages, leadsByStage, today, canWrite, o
               if (id) onMove(id, stage.id);
             }}
             sx={{
-              flex: `0 0 ${COLUMN_WIDTH}px`,
+              flex: { xs: `0 0 ${COLUMN_WIDTH}px`, md: '1 1 0' },
+              minWidth: { md: COLUMN_MIN },
+              maxWidth: { md: COLUMN_MAX },
               scrollSnapAlign: 'start',
               backgroundColor: COLORS.backgroundSecondary,
               borderRadius: 2.5,
-              p: 1.25,
+              p: { xs: 1.25, md: 1 },
               display: 'flex',
               flexDirection: 'column',
               maxHeight: 'calc(100vh - 230px)',
