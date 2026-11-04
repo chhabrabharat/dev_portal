@@ -80,6 +80,7 @@ src/
     AccountsPage.js       R1 — clinics list
     AccountDetailPage.js  R2/R3 — detail + status dialog
     UsagePage.js          R4 — cross-clinic usage
+    GooglePage.js         which clinics linked Google Business Profile, and whether it syncs
     LeadsPage.js          R5 — lead inbox (contact-us enquiries handed to clinics)
     PipelinePage.js       sales pipeline board (clinics the company sells to)
   components/pipeline/    board, card, detail dialog, needs-action panel, cold-pool drawer
@@ -142,3 +143,20 @@ deactivate the row before real customer data lives on a server.
 Locally, boot `health` with `APP_PLATFORM_SEED_ENABLED=true` and `APP_PLATFORM_SEED_PASSWORD=...`.
 In a deployed environment, insert the row by hand and set `JWT_PLATFORM_SECRET` — the default
 platform signing key is a literal in committed source and is dev-only.
+
+## Google overview
+
+`pages/GooglePage.js` reads `GET /api/platform/google/overview` (`PlatformGoogleController` /
+`PlatformGoogleService` in `health`): every branch, with its Google Business Profile state.
+
+- **The state is decided by the backend** (`PlatformGoogleService.classify`), worst first:
+  `NOT_CONNECTED`, `NEEDS_LISTING` (signed in, no listing picked), `ERROR` (the last call failed;
+  cleared by the next good review sync), `STALE` (no review sync for 24h, or never), `OK`. The
+  portal only chooses colours (`GOOGLE_STATES` in `adminTokens.js`), so it and the API cannot
+  disagree about what "connected" means.
+- **Every branch is listed**, including ones that never connected - that is the clinic worth a call.
+  A branch whose clinic has a null status shows "No status set", as elsewhere.
+- **Read-only, counts and times only.** The query selects no credential column and no review
+  text; `PlatformGoogleServiceTest` pins that the row type has no token or cipher field.
+- "Review link ready" is whether the branch's stored Place ID is well-formed, which is what the
+  "ask for a Google review" message needs. It says nothing about the Business Profile link.

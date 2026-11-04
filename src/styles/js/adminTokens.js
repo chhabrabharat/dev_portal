@@ -105,3 +105,22 @@ export const DUE_COLORS = {
   today: { fg: '#92400e', bg: '#fef3c7' },
   later: { fg: COLORS.textSecondary, bg: '#f1f5f9' },
 };
+
+/**
+ * Where a branch's Google Business Profile link stands. The keys are decided by the backend
+ * (PlatformGoogleService.classify), so this only chooses how to show them; ORDER is worst-first
+ * because the screen exists to find the clinics that need a call.
+ */
+export const GOOGLE_STATES = {
+  OK: { fg: '#065f46', bg: '#d1fae5', label: 'Connected' },
+  STALE: { fg: '#92400e', bg: '#fef3c7', label: 'Not syncing' },
+  ERROR: { fg: '#7f1d1d', bg: '#fee2e2', label: 'Error' },
+  NEEDS_LISTING: { fg: '#1e40af', bg: '#dbeafe', label: 'Pick a listing' },
+  NOT_CONNECTED: { fg: COLORS.textMuted, bg: '#f1f5f9', label: 'Not connected' },
+};
+
+export const GOOGLE_STATE_ORDER = ['OK', 'STALE', 'ERROR', 'NEEDS_LISTING', 'NOT_CONNECTED'];
+
+export function googleStateToken(state) {
+  return GOOGLE_STATES[state] || GOOGLE_STATES.NOT_CONNECTED;
+}

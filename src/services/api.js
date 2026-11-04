@@ -180,6 +180,15 @@ export const fetchTraffic = async ({ days } = {}) => {
   return data;
 };
 
+/**
+ * Every branch on the platform with its Google Business Profile state. One call, not one per
+ * clinic: the backend stitches three queries together, and the table filters client-side.
+ */
+export const fetchGoogleOverview = async () => {
+  const { data } = await api.get('/platform/google/overview');
+  return data;
+};
+
 export const fetchLeads = async ({ assigned, search } = {}) => {
   const { data } = await api.get('/platform/leads', {
     // assigned is a tri-state: undefined = all, false = unclaimed pool, true = already assigned.

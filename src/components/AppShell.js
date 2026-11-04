@@ -16,6 +16,8 @@ const NAV = [
   // Next to Usage rather than beside Leads: both answer "is this clinic getting anything out of
   // us", one from inside the app and one from the public page.
   { to: '/traffic', label: 'Traffic' },
+  // Beside Traffic: how visible each clinic is to patients, from Google's side.
+  { to: '/google', label: 'Google' },
   { to: '/leads', label: 'Leads' },
   // The company's own sales board. "Leads" above is the contact-us inbox (patient enquiries
   // handed to clinics); this is clinics the company is selling to. Two different things that

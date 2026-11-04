@@ -52,6 +52,22 @@ export function relativeDays(iso) {
   return days === -1 ? 'yesterday' : `${Math.abs(days)}d ago`;
 }
 
+/**
+ * "5m ago" / "3h ago" / "2d ago" for a moment in the past. Finer than relativeDays, which is for
+ * appointment slots that can be in the future; this is for "when did the sync last run".
+ */
+export function ago(iso) {
+  if (!iso) return 'never';
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return 'never';
+  const mins = Math.round((Date.now() - then.getTime()) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.round(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.round(hours / 24)}d ago`;
+}
+
 /** ISO yyyy-MM-dd, which is what the backend's @DateTimeFormat(ISO.DATE) params expect. */
 export function isoDate(date) {
   const pad = (n) => String(n).padStart(2, '0');
