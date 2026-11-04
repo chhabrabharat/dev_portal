@@ -18,6 +18,8 @@ const NAV = [
   { to: '/traffic', label: 'Traffic' },
   // Beside Traffic: how visible each clinic is to patients, from Google's side.
   { to: '/google', label: 'Google' },
+  // Google plus the public page and directories, scored: the report clinics get monthly.
+  { to: '/presence', label: 'Presence' },
   { to: '/leads', label: 'Leads' },
   // The company's own sales board. "Leads" above is the contact-us inbox (patient enquiries
   // handed to clinics); this is clinics the company is selling to. Two different things that

@@ -189,6 +189,17 @@ export const fetchGoogleOverview = async () => {
   return data;
 };
 
+export const fetchPresenceOverview = async () => {
+  const { data } = await api.get('/platform/online-presence/overview');
+  return data;
+};
+
+/** Scores every active branch now (admin only; sends no email). */
+export const runPresenceScoring = async () => {
+  const { data } = await api.post('/platform/online-presence/run');
+  return data;
+};
+
 export const fetchLeads = async ({ assigned, search } = {}) => {
   const { data } = await api.get('/platform/leads', {
     // assigned is a tri-state: undefined = all, false = unclaimed pool, true = already assigned.

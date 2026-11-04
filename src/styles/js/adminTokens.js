@@ -124,3 +124,11 @@ export const GOOGLE_STATE_ORDER = ['OK', 'STALE', 'ERROR', 'NEEDS_LISTING', 'NOT
 export function googleStateToken(state) {
   return GOOGLE_STATES[state] || GOOGLE_STATES.NOT_CONNECTED;
 }
+
+/** Colour band for an online presence score (0-100). Same thresholds the clinic app uses. */
+export function presenceScoreToken(score) {
+  if (score == null) return { fg: COLORS.textMuted, bg: '#f1f5f9' };
+  if (score >= 75) return { fg: '#065f46', bg: '#d1fae5' };
+  if (score >= 50) return { fg: '#92400e', bg: '#fef3c7' };
+  return { fg: '#7f1d1d', bg: '#fee2e2' };
+}
