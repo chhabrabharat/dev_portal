@@ -53,10 +53,18 @@ export function PlatformAuthProvider({ children }) {
     setOperator(null);
   }, []);
 
-  const canWrite = operator?.role === 'PLATFORM_ADMIN';
+  const role = operator?.role;
+  // Three roles, two write gates - mirroring CurrentPlatformUserService exactly:
+  //   canWrite      -> assertCanWrite():      PLATFORM_ADMIN only (clinic status, plans, features, team)
+  //   canWorkLeads  -> assertCanWorkLeads():  ADMIN or SALES (pipeline, enquiry inbox)
+  // isSales also narrows the nav and the route guard to the two sales tabs; the server confines
+  // the role to the same routes, so this is a courtesy, not a control.
+  const canWrite = role === 'PLATFORM_ADMIN';
+  const isSales = role === 'PLATFORM_SALES';
+  const canWorkLeads = canWrite || isSales;
 
   return (
-    <PlatformAuthContext.Provider value={{ operator, loading, login, logout, canWrite }}>
+    <PlatformAuthContext.Provider value={{ operator, loading, login, logout, canWrite, canWorkLeads, isSales, role }}>
       {children}
     </PlatformAuthContext.Provider>
   );

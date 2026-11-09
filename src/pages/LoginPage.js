@@ -10,6 +10,7 @@ import Alert from '@mui/material/Alert';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
 import { errorMessage } from '../services/api';
 import { COLORS } from '../styles/js/styleConstants';
+import { homeFor } from '../utils/roles';
 
 export default function LoginPage() {
   const { operator, login, loading } = usePlatformAuth();
@@ -20,7 +21,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && operator) {
-    return <Navigate to="/accounts" replace />;
+    return <Navigate to={homeFor(operator.role)} replace />;
   }
 
   const submit = async (event) => {
@@ -28,8 +29,8 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(username.trim(), password);
-      navigate('/accounts', { replace: true });
+      const signedIn = await login(username.trim(), password);
+      navigate(homeFor(signedIn?.role), { replace: true });
     } catch (e) {
       // The API answers every failed login identically on purpose (no such operator / wrong
       // password / deactivated are one response), so there is nothing more specific to show.

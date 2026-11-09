@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import AppShell from './components/AppShell';
@@ -14,6 +14,8 @@ import LeadsPage from './pages/LeadsPage';
 import PipelinePage from './pages/PipelinePage';
 import GooglePage from './pages/GooglePage';
 import PresencePage from './pages/PresencePage';
+import TeamPage from './pages/TeamPage';
+import { canOpen, homeFor } from './utils/roles';
 
 /**
  * Route guard. Purely a UX convenience - every /api/platform/** route independently requires a
@@ -22,6 +24,7 @@ import PresencePage from './pages/PresencePage';
  */
 function RequireOperator({ children }) {
   const { operator, loading } = usePlatformAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
@@ -32,7 +35,18 @@ function RequireOperator({ children }) {
   if (!operator) {
     return <Navigate to="/login" replace />;
   }
+  // A role outside its routes goes home rather than to a page that would 403 - and a 403 on any
+  // platform route logs the operator out (services/api.js), which would read as a broken login.
+  if (!canOpen(operator.role, location.pathname)) {
+    return <Navigate to={homeFor(operator.role)} replace />;
+  }
   return <AppShell>{children}</AppShell>;
+}
+
+/** "/" and unknown paths: land where the role is allowed to be. */
+function HomeRedirect() {
+  const { operator } = usePlatformAuth();
+  return <Navigate to={homeFor(operator?.role)} replace />;
 }
 
 export default function App() {
@@ -53,9 +67,10 @@ export default function App() {
         <Route path="/leads" element={<RequireOperator><LeadsPage /></RequireOperator>} />
         {/* Sales pipeline - clinics we sell to. Not the same thing as /leads (contact-us inbox). */}
         <Route path="/pipeline" element={<RequireOperator><PipelinePage /></RequireOperator>} />
+        <Route path="/team" element={<RequireOperator><TeamPage /></RequireOperator>} />
         {/* Clinics is the landing view: "which of our customers needs attention" is the first
             question this portal exists to answer. */}
-        <Route path="*" element={<Navigate to="/accounts" replace />} />
+        <Route path="*" element={<HomeRedirect />} />
       </Routes>
     </>
   );

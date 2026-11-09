@@ -107,7 +107,7 @@ export default function PipelineBoard({ stages, allStages, leadsByStage, today, 
               <Typography variant="caption" sx={{ color: COLORS.textMuted, fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                 {items.length}
               </Typography>
-              <Tooltip title={canWrite ? `Add a lead to ${stage.name}` : 'PLATFORM_SUPPORT is read-only'}>
+              <Tooltip title={canWrite ? `Add a lead to ${stage.name}` : 'Your role is read-only here'}>
                 <span>
                   <IconButton size="small" disabled={!canWrite} onClick={() => onAdd(stage.id)} aria-label={`Add lead to ${stage.name}`} sx={{ p: 0.25 }}>
                     <AddIcon fontSize="small" />

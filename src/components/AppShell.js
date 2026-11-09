@@ -9,6 +9,7 @@ import Chip from '@mui/material/Chip';
 import Tooltip from '@mui/material/Tooltip';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
 import { COLORS, LAYOUT, SHADOWS } from '../styles/js/styleConstants';
+import { ROLE_LABELS, canOpen } from '../utils/roles';
 
 const NAV = [
   { to: '/accounts', label: 'Clinics' },
@@ -25,11 +26,15 @@ const NAV = [
   // handed to clinics); this is clinics the company is selling to. Two different things that
   // both happen to be called leads, hence the different label.
   { to: '/pipeline', label: 'Pipeline' },
+  // Operator logins. Admin-only, and last, because it is housekeeping rather than oversight.
+  { to: '/team', label: 'Team' },
 ];
 
 export default function AppShell({ children }) {
-  const { operator, logout, canWrite } = usePlatformAuth();
+  const { operator, logout, role } = usePlatformAuth();
   const navigate = useNavigate();
+  const nav = NAV.filter((item) => canOpen(role, item.to));
+  const roleInfo = ROLE_LABELS[role];
 
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: COLORS.backgroundPrimary }}>
@@ -40,7 +45,7 @@ export default function AppShell({ children }) {
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 0.5, flexGrow: 1, flexWrap: 'wrap' }}>
-            {NAV.map((item) => (
+            {nav.map((item) => (
               <Button
                 key={item.to}
                 component={NavLink}
@@ -60,19 +65,13 @@ export default function AppShell({ children }) {
 
           {/* The role is shown, not hidden, because it changes what the portal will let you do -
               an operator who can't find the suspend button should be able to see why. */}
-          <Tooltip
-            title={
-              canWrite
-                ? 'PLATFORM_ADMIN - may change clinic status, assign leads and work the pipeline'
-                : 'PLATFORM_SUPPORT - read-only; write actions are disabled'
-            }
-          >
+          <Tooltip title={roleInfo?.hint || 'Unknown role'}>
             <Chip
               size="small"
               label={operator?.role || 'unknown role'}
               sx={{
                 color: '#fff',
-                backgroundColor: canWrite ? 'rgba(255,255,255,0.22)' : 'rgba(0,0,0,0.28)',
+                backgroundColor: role === 'PLATFORM_SUPPORT' ? 'rgba(0,0,0,0.28)' : 'rgba(255,255,255,0.22)',
                 fontWeight: 600,
               }}
             />

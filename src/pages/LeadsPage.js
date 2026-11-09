@@ -36,7 +36,7 @@ const FILTERS = [
 const UNASSIGN = '__unassign__';
 
 export default function LeadsPage() {
-  const { canWrite } = usePlatformAuth();
+  const { canWorkLeads: canWrite } = usePlatformAuth();
   const [filter, setFilter] = useState('false');
   const [search, setSearch] = useState('');
   const [leads, setLeads] = useState([]);
@@ -173,7 +173,7 @@ export default function LeadsPage() {
                     )}
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title={canWrite ? '' : 'PLATFORM_SUPPORT is read-only'}>
+                    <Tooltip title={canWrite ? '' : 'Your role is read-only here'}>
                       <span>
                         <Button
                           size="small"
