@@ -26,6 +26,15 @@ import { ROLE_LABELS } from '../utils/roles';
 import { dateTime } from '../utils/format';
 
 const ROLES = ['PLATFORM_ADMIN', 'PLATFORM_SALES', 'PLATFORM_SUPPORT'];
+const MIN_PASSWORD = 8;
+
+/** Why "Create login" is disabled, or null when it isn't. Mirrors PlatformUserAdminService. */
+function createBlocker(form) {
+  if (!form.username.trim()) return 'Enter a username';
+  if (!/^[a-z0-9._-]{2,40}$/.test(form.username.trim().toLowerCase())) return 'Username: letters, digits, dot, dash or underscore only';
+  if (form.password.length < MIN_PASSWORD) return `Password needs ${MIN_PASSWORD - form.password.length} more character${MIN_PASSWORD - form.password.length === 1 ? '' : 's'}`;
+  return null;
+}
 const EMPTY = { username: '', password: '', firstName: '', lastName: '', email: '', role: 'PLATFORM_SALES' };
 
 /**
@@ -56,7 +65,11 @@ export default function TeamPage() {
       setRows(await fetchOperators());
       setError(null);
     } catch (e) {
-      setError(errorMessage(e, 'Could not load the team'));
+      // A 500 here on a freshly deployed portal usually means the backend behind it has not
+      // rolled out /platform/users yet - its catch-all turns an unknown route into a 500.
+      setError(e?.response?.status === 500
+        ? 'The backend does not have the Team endpoint yet - the latest health release may still be rolling out. Try again in a few minutes.'
+        : errorMessage(e, 'Could not load the team'));
     } finally {
       setLoading(false);
     }
@@ -208,7 +221,10 @@ export default function TeamPage() {
           <TextField size="small" label="Username" required autoFocus value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })}
             helperText="Letters, digits, dot, dash, underscore. Lower-cased." />
           <TextField size="small" label="Password" required type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
-            helperText="At least 8 characters. Shown in clear so you can pass it on; they can't change it themselves yet." />
+            error={form.password.length > 0 && form.password.length < MIN_PASSWORD}
+            helperText={form.password.length > 0 && form.password.length < MIN_PASSWORD
+              ? `${MIN_PASSWORD - form.password.length} more character${MIN_PASSWORD - form.password.length === 1 ? '' : 's'} needed (minimum ${MIN_PASSWORD})`
+              : 'At least 8 characters. Shown in clear so you can pass it on; they can\'t change it themselves yet.'} />
           <Box sx={{ display: 'flex', gap: 1.5 }}>
             <TextField size="small" label="First name" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} fullWidth />
             <TextField size="small" label="Last name" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} fullWidth />
@@ -220,9 +236,12 @@ export default function TeamPage() {
             {ROLES.map((r) => <MenuItem key={r} value={r}>{ROLE_LABELS[r].label}</MenuItem>)}
           </TextField>
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions sx={{ px: 3, pb: 2, gap: 1 }}>
+          {createBlocker(form) && (
+            <Typography variant="caption" sx={{ color: COLORS.textMuted, mr: 'auto' }}>{createBlocker(form)}</Typography>
+          )}
           <Button onClick={() => setCreateOpen(false)} disabled={busy}>Cancel</Button>
-          <Button variant="contained" onClick={submitCreate} disabled={busy || !form.username.trim() || form.password.length < 8}>
+          <Button variant="contained" onClick={submitCreate} disabled={busy || !!createBlocker(form)}>
             {busy ? 'Creating…' : 'Create login'}
           </Button>
         </DialogActions>
@@ -233,11 +252,14 @@ export default function TeamPage() {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, pt: '8px !important' }}>
           {dialogError && <Alert severity="error">{dialogError}</Alert>}
           <TextField size="small" label="New password" type="text" autoFocus value={pw} onChange={(e) => setPw(e.target.value)}
-            helperText="At least 8 characters. Their current session keeps working until they sign out." />
+            error={pw.length > 0 && pw.length < MIN_PASSWORD}
+            helperText={pw.length > 0 && pw.length < MIN_PASSWORD
+              ? `${MIN_PASSWORD - pw.length} more character${MIN_PASSWORD - pw.length === 1 ? '' : 's'} needed (minimum ${MIN_PASSWORD})`
+              : 'At least 8 characters. Their current session keeps working until they sign out.'} />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setPwFor(null)} disabled={busy}>Cancel</Button>
-          <Button variant="contained" onClick={submitPassword} disabled={busy || pw.length < 8}>{busy ? 'Saving…' : 'Save'}</Button>
+          <Button variant="contained" onClick={submitPassword} disabled={busy || pw.length < MIN_PASSWORD}>{busy ? 'Saving…' : 'Save'}</Button>
         </DialogActions>
       </Dialog>
 
