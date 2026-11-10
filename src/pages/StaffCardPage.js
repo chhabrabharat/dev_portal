@@ -8,11 +8,14 @@ import Alert from '@mui/material/Alert';
 import LinearProgress from '@mui/material/LinearProgress';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
 import {
-  errorMessage, fetchCardConfig, fetchCardPdf, fetchStaffProfile, logCardPrint, staffPhotoUrl,
+  errorMessage, fetchCardConfig, fetchStaffProfile, logCardPrint, staffPhotoUrl,
 } from '../services/api';
 import { COLORS } from '../styles/js/styleConstants';
-import { downloadBlob } from '../utils/staff';
-import { CARD_SIZES, CardBack, IdFront, VisitingFront } from '../components/staff/cards/CardFaces';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import {
+  CARD_SIZES, IdBack, IdFront, VISITING_DESIGNS, VisitingBack, VisitingFront,
+} from '../components/staff/cards/CardFaces';
 
 /**
  * Print view for the ID card and the visiting card (front and back).
@@ -23,9 +26,10 @@ import { CARD_SIZES, CardBack, IdFront, VisitingFront } from '../components/staf
  */
 export default function StaffCardPage() {
   const { id } = useParams();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const { canWrite } = usePlatformAuth();
   const type = params.get('type') === 'VISITING' ? 'VISITING' : 'ID';
+  const design = Math.min(5, Math.max(1, Number(params.get('design')) || 1));
   const [profile, setProfile] = useState(null);
   const [company, setCompany] = useState(null);
   const [photoUrl, setPhotoUrl] = useState(null);
@@ -54,8 +58,9 @@ export default function StaffCardPage() {
 
   const size = CARD_SIZES[type];
   const printCss = useMemo(() => `
-    @page { size: ${size.w}mm ${size.h}mm; margin: 0; }
+    @page { size: ${size.w}px ${size.h}px; margin: 0; }
     @media print {
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       html, body { background: #fff !important; margin: 0 !important; padding: 0 !important; }
       .no-print { display: none !important; }
       .sheet { display: block !important; padding: 0 !important; gap: 0 !important; }
@@ -72,18 +77,6 @@ export default function StaffCardPage() {
       window.print();
     } catch (e) {
       setError(errorMessage(e, 'The print could not be recorded, so it was not started'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const pdf = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      downloadBlob(await fetchCardPdf(id, type), `${profile.employeeCode}-${type.toLowerCase()}-card.pdf`);
-    } catch (e) {
-      setError(errorMessage(e, 'Could not make the PDF'));
     } finally {
       setBusy(false);
     }
@@ -109,9 +102,21 @@ export default function StaffCardPage() {
         <Button component={RouterLink} to={`/staff/${id}/card?type=${type === 'ID' ? 'VISITING' : 'ID'}`} size="small" variant="text">
           Switch to {type === 'ID' ? 'visiting' : 'ID'} card
         </Button>
-        <Button variant="outlined" size="small" onClick={pdf} disabled={!profile || busy}>Download PDF</Button>
-        <Button variant="contained" size="small" onClick={print} disabled={!profile || busy || !photoReady}>Print</Button>
+        <Button variant="contained" size="small" onClick={print} disabled={!profile || busy || !photoReady}>Print / Save as PDF</Button>
       </Box>
+      {type === 'VISITING' && (
+        <Box className="no-print" sx={{ px: 2, pb: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="caption" sx={{ color: COLORS.textMuted }}>Front design</Typography>
+          <ToggleButtonGroup
+            exclusive size="small" value={design}
+            onChange={(_, v) => { if (v) setParams({ type: 'VISITING', design: String(v) }, { replace: true }); }}
+          >
+            {VISITING_DESIGNS.map((d) => (
+              <ToggleButton key={d.key} value={d.key} sx={{ textTransform: 'none' }}>{d.key} · {d.label}</ToggleButton>
+            ))}
+          </ToggleButtonGroup>
+        </Box>
+      )}
       {error && <Alert className="no-print" severity="error" sx={{ mx: 2, mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
       {!profile && !error && <LinearProgress className="no-print" />}
       {profile && !profile.photoPath && type === 'ID' && (
@@ -123,8 +128,10 @@ export default function StaffCardPage() {
           {[
             ['Front', type === 'ID'
               ? <IdFront profile={profile} company={company} photoUrl={photoUrl} onPhotoLoad={() => setPhotoReady(true)} />
-              : <VisitingFront profile={profile} company={company} />],
-            ['Back', <CardBack type={type} profile={profile} company={company} qrUrl={qrUrl} />],
+              : <VisitingFront design={design} company={company} />],
+            ['Back', type === 'ID'
+              ? <IdBack profile={profile} company={company} qrUrl={qrUrl} />
+              : <VisitingBack profile={profile} company={company} />],
           ].map(([label, face]) => (
             <Box key={label}>
               <Typography className="no-print" variant="caption" sx={{ color: COLORS.textMuted, display: 'block', mb: 0.5 }}>{label}</Typography>
