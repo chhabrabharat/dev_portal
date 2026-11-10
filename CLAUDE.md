@@ -192,6 +192,12 @@ semantic change of an existing field.
   (this repo; `main` is the integration branch) and the `health` backend
   (`~/Desktop/DocProject/health` on the user's Mac). Commit and push to the current branch
   when a task is done — the user expects it (a stop hook checks for uncommitted work).
+- **Deploying.** This portal deploys itself: Vercel builds every push (production from
+  `feature/platform-admin-portal`, previews from `main`). The backend does **not**: merging
+  `health` to `release` deploys nothing. Production `health-api` is rolled by hand from the user's
+  Mac with `./deploy/gcp/deploy.sh origin/release` (Cloud Build in `asia-south1`, ~3 min). A
+  portal page that calls a new endpoint will show "Internal server error" (health's catch-all
+  turns an unknown route into a 500) until that script has been run.
 - If a sibling repo (`crm_frontend`, `crm_mobile`, `patient_portal`) is needed, it is
   **read-only** for grep/reference. Never commit to it from a dev_portal task.
 - Anything not covered by `settings.json` that needs approval (a new domain, a destructive
