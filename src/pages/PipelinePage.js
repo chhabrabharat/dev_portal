@@ -37,7 +37,7 @@ const STAT_KEYS = [
 ];
 
 export default function PipelinePage() {
-  const { canWorkLeads: canWrite } = usePlatformAuth();
+  const { canWrite } = usePlatformAuth();
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -223,7 +223,7 @@ export default function PipelinePage() {
         <Button variant="outlined" size="small" onClick={() => setDrawerOpen(true)}>
           Cold pool
         </Button>
-        <Tooltip title={canWrite ? '' : 'Your role is read-only here'}>
+        <Tooltip title={canWrite ? '' : 'PLATFORM_SUPPORT is read-only'}>
           <span>
             <Button variant="contained" size="small" disabled={!canWrite} onClick={() => setDialog({ open: true, leadId: null, stageId: stages[0]?.id || null })}>
               + New lead

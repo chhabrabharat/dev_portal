@@ -169,7 +169,7 @@ export default function LeadDialog({ open, leadId, defaultStageId, stages, owner
       </DialogTitle>
       <DialogContent sx={{ pt: '8px !important' }}>
         {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>{error}</Alert>}
-        {!canWrite && <Alert severity="info" sx={{ mb: 2 }}>Your role is read-only here; fields are shown but cannot be changed.</Alert>}
+        {!canWrite && <Alert severity="info" sx={{ mb: 2 }}>PLATFORM_SUPPORT is read-only; fields are shown but cannot be changed.</Alert>}
         <Grid container spacing={1.5}>
           <Grid item xs={12}>{field('name', 'Clinic or hospital name', { required: true, autoFocus: creating })}</Grid>
           <Grid item xs={12} sm={6}>{field('type', 'Type (e.g. Dental clinic)')}</Grid>

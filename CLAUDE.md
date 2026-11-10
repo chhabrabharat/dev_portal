@@ -70,18 +70,6 @@ tenants. Specifically:
   enforced server-side by `CurrentPlatformUserService.assertCanWrite()`; the UI disabling is a
   courtesy so operators don't click something that will 403.
 
-**Three roles, two write gates.** `PLATFORM_ADMIN` does everything. `PLATFORM_SUPPORT` is
-read-only everywhere. `PLATFORM_SALES` sees only the Leads and Pipeline tabs and may write there.
-The context exposes `canWrite` (ADMIN - clinic status, plans, features, team) and `canWorkLeads`
-(ADMIN or SALES - pipeline and enquiry inbox), mirroring `assertCanWrite()` /
-`assertCanWorkLeads()` on the server. `utils/roles.js` is the one place that says which routes a
-role may open; `AppShell` (nav), `App` (`RequireOperator`) and `LoginPage` (landing) all read it.
-The route guard matters more than it looks: `services/api.js` logs the operator out on any 403,
-so a sales user who reached an admin page would be signed out rather than shown an error. Server
-side, `SecurityConfig` accepts `PLATFORM_SALES` on `/api/platform/{auth,pipeline,leads}/**` only.
-Operator logins are managed on the Team page (`/team`, admin-only) via `/api/platform/users`;
-there is no delete, only deactivate.
-
 **Don't add tenant-scoping state.** No `selectedLocationId`, no account context. A company
 operator isn't scoped to a clinic, and adding that state would imitate a guard `crm_frontend`
 needs for reasons that don't exist here.
@@ -125,8 +113,6 @@ Concretely, on the `health` backend:
   5. **Sales pipeline** — the `sales_stage` / `sales_lead` / `sales_lead_history` /
      `sales_cold_lead` tables and `PlatformUser.pipelineReminder`, via `/platform/pipeline/**`.
      These are platform-side tables with no account link; nothing clinic-facing reads them.
-  6. **Platform operators** — `platform_user` rows (create, role, active, password) via
-     `/platform/users/**`, ADMIN only. Never clinic users.
 - Add **new** read-only platform endpoints, new platform-side columns/tables, and new
   `PlatformXxx` controllers/services/DTOs under the platform package.
 
@@ -248,7 +234,7 @@ Things that are deliberate:
   Same absent-vs-null contract as the subscription PATCH.
 - **Reminders are email only**, to `PlatformUser.email`, because it is the only channel that can
   address a platform operator (push subscriptions hang off clinic users). A lead with no owner
-  goes to every active PLATFORM_SALES user, or to every PLATFORM_ADMIN when there is no sales team. Nothing is sent when nothing is due, or when SMTP is not
+  goes to every active PLATFORM_ADMIN. Nothing is sent when nothing is due, or when SMTP is not
   configured - the switch on the page says which. `PlatformPipelineReminderService` runs under
   `SchedulingConfig`, so `APP_SCHEDULING_ENABLED=false` silences it with everything else.
 - **A deleted lead that came from the cold pool returns to the pool** - the pool row is kept and

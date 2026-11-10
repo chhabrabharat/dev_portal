@@ -339,25 +339,3 @@ export const importPipeline = async (payload) => {
   const { data } = await api.post('/platform/pipeline/import', payload);
   return data;
 };
-
-// --- operators (Team page; admin only) ----------------------------------------------------------
-
-export const fetchOperators = async () => {
-  const { data } = await api.get('/platform/users');
-  return data;
-};
-
-export const createOperator = async (payload) => {
-  const { data } = await api.post('/platform/users', payload);
-  return data;
-};
-
-/** Only non-null keys apply; { active: false } retires a login. */
-export const updateOperator = async (id, payload) => {
-  const { data } = await api.patch(`/platform/users/${id}`, payload);
-  return data;
-};
-
-export const setOperatorPassword = async (id, password) => {
-  await api.put(`/platform/users/${id}/password`, { password });
-};

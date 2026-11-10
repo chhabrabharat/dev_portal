@@ -83,8 +83,6 @@ src/
     GooglePage.js         which clinics linked Google Business Profile, and whether it syncs
     LeadsPage.js          R5 — lead inbox (contact-us enquiries handed to clinics)
     PipelinePage.js       sales pipeline board (clinics the company sells to)
-    TeamPage.js           operator logins - create, role, password, deactivate (admin only)
-  utils/roles.js          which routes each platform role may open; nav, guard and landing read it
   components/pipeline/    board, card, detail dialog, needs-action panel, cold-pool drawer
   utils/pipeline.js       IST date helpers for the board
   styles/js/
