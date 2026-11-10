@@ -48,6 +48,13 @@ export function PlatformAuthProvider({ children }) {
     return rest;
   }, []);
 
+  /** Replaces the signed-in operator (e.g. once a one-time password has been changed). Keeps the token. */
+  const applyOperator = useCallback((next) => {
+    const { token, ...rest } = next || {};
+    storeSession(getToken(), rest);
+    setOperator(rest);
+  }, []);
+
   const logout = useCallback(() => {
     clearSession();
     setOperator(null);
@@ -56,7 +63,7 @@ export function PlatformAuthProvider({ children }) {
   const canWrite = operator?.role === 'PLATFORM_ADMIN';
 
   return (
-    <PlatformAuthContext.Provider value={{ operator, loading, login, logout, canWrite }}>
+    <PlatformAuthContext.Provider value={{ operator, loading, login, logout, canWrite, applyOperator }}>
       {children}
     </PlatformAuthContext.Provider>
   );

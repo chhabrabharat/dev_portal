@@ -111,6 +111,15 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     const url = error.config?.url || '';
+    // The seeded admin must set its own password before anything else works. The server answers
+    // every other route with this code; that is a redirect to the password screen, not a dead
+    // session, so the token is kept.
+    if (status === 403 && error.response?.data?.code === 'PASSWORD_CHANGE_REQUIRED') {
+      if (window.location.pathname !== '/change-password') {
+        window.location.assign('/change-password');
+      }
+      return Promise.reject(error);
+    }
     // A 401/403 on any platform route other than login means the token is gone, expired, or the
     // operator was deactivated server-side (PlatformJwtFilter re-reads the row every request).
     // Drop the stale session rather than leaving the UI in a half-authenticated state where
@@ -212,6 +221,148 @@ export const fetchLeads = async ({ assigned, search } = {}) => {
 
 export const assignLead = async (id, accountId) => {
   const { data } = await api.put(`/platform/leads/${id}/assignment`, { accountId });
+  return data;
+};
+
+// ---- Staff management (docs/prd/staff-management.md) ----
+//
+// Pay (compensation, salary, bonus) and the audit log are PLATFORM_ADMIN only on the server, and a
+// 403 from this client clears the session. So callers must not request them for SUPPORT at all:
+// the screens gate on canWrite before calling fetchCompensation or fetchAudit.
+
+export const fetchStaff = async () => {
+  const { data } = await api.get('/platform/staff');
+  return data;
+};
+
+export const fetchStaffProfile = async (id) => {
+  const { data } = await api.get(`/platform/staff/${id}`);
+  return data;
+};
+
+export const createStaff = async (payload) => {
+  const { data } = await api.post('/platform/staff', payload);
+  return data;
+};
+
+export const updateStaff = async (id, payload) => {
+  const { data } = await api.put(`/platform/staff/${id}`, payload);
+  return data;
+};
+
+export const saveQualifications = async (id, items) => {
+  const { data } = await api.put(`/platform/staff/${id}/qualifications`, items);
+  return data;
+};
+
+export const fetchDesignations = async () => {
+  const { data } = await api.get('/platform/staff/designations');
+  return data;
+};
+
+export const createDesignation = async (name) => {
+  const { data } = await api.post('/platform/staff/designations', { name });
+  return data;
+};
+
+export const updateDesignation = async (id, payload) => {
+  const { data } = await api.put(`/platform/staff/designations/${id}`, payload);
+  return data;
+};
+
+/** PLATFORM_ADMIN only. */
+export const fetchCompensation = async (id) => {
+  const { data } = await api.get(`/platform/staff/${id}/compensation`);
+  return data;
+};
+
+export const addSalary = async (id, payload) => {
+  const { data } = await api.post(`/platform/staff/${id}/salary`, payload);
+  return data;
+};
+
+export const addBonus = async (id, payload) => {
+  const { data } = await api.post(`/platform/staff/${id}/bonus`, payload);
+  return data;
+};
+
+/** PLATFORM_ADMIN only. */
+export const fetchAudit = async (limit = 100) => {
+  const { data } = await api.get('/platform/staff/audit', { params: { limit } });
+  return data;
+};
+
+export const fetchStaffDocuments = async (id) => {
+  const { data } = await api.get(`/platform/staff/${id}/documents`);
+  return data;
+};
+
+export const uploadStaffDocument = async (id, type, file) => {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await api.post(`/platform/staff/${id}/documents`, form, { params: { type } });
+  return data;
+};
+
+/** A signed URL that expires in minutes; fetch it at click time, never cache it. */
+export const staffDocumentUrl = async (id, documentId) => {
+  const { data } = await api.get(`/platform/staff/${id}/documents/${documentId}/url`);
+  return data;
+};
+
+export const deleteStaffDocument = async (id, documentId) => {
+  await api.delete(`/platform/staff/${id}/documents/${documentId}`);
+};
+
+export const uploadStaffPhoto = async (id, file) => {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await api.put(`/platform/staff/${id}/photo`, form);
+  return data;
+};
+
+export const staffPhotoUrl = async (id) => {
+  const { data } = await api.get(`/platform/staff/${id}/photo-url`);
+  return data;
+};
+
+// ---- Cards (PLATFORM_ADMIN only; printing is audit-logged on the server) ----
+
+export const fetchCardConfig = async () => {
+  const { data } = await api.get('/platform/staff/card-config');
+  return data;
+};
+
+/** Records that a card was printed from the browser. `type` is ID or VISITING. */
+export const logCardPrint = async (id, type, format) => {
+  await api.post(`/platform/staff/${id}/print-log`, { type, format });
+};
+
+/** The PDF as a Blob. The server logs the print itself. */
+export const fetchCardPdf = async (id, type) => {
+  const { data } = await api.get(`/platform/staff/${id}/card.pdf`, { params: { type }, responseType: 'blob' });
+  return data;
+};
+
+// ---- Lead credit report (PLATFORM_ADMIN and PLATFORM_SUPPORT; counts only) ----
+
+export const fetchLeadCredit = async ({ from, to } = {}) => {
+  const { data } = await api.get('/platform/staff/lead-credit', { params: { from: from || undefined, to: to || undefined } });
+  return data;
+};
+
+export const fetchLeadCreditCsv = async ({ from, to } = {}) => {
+  const { data } = await api.get('/platform/staff/lead-credit/csv', {
+    params: { from: from || undefined, to: to || undefined },
+    responseType: 'blob',
+  });
+  return data;
+};
+
+// ---- Own password ----
+
+export const changeOwnPassword = async (currentPassword, newPassword) => {
+  const { data } = await api.post('/platform/auth/change-password', { currentPassword, newPassword });
   return data;
 };
 

@@ -20,7 +20,7 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (!loading && operator) {
-    return <Navigate to="/accounts" replace />;
+    return <Navigate to={operator.mustChangePassword ? '/change-password' : '/accounts'} replace />;
   }
 
   const submit = async (event) => {
@@ -28,8 +28,9 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
     try {
-      await login(username.trim(), password);
-      navigate('/accounts', { replace: true });
+      const who = await login(username.trim(), password);
+      // A one-time password only opens the password screen; the server enforces that too.
+      navigate(who?.mustChangePassword ? '/change-password' : '/accounts', { replace: true });
     } catch (e) {
       // The API answers every failed login identically on purpose (no such operator / wrong
       // password / deactivated are one response), so there is nothing more specific to show.

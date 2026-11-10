@@ -16,7 +16,8 @@ import { useTheme } from '@mui/material/styles';
 import { COLORS } from '../../styles/js/styleConstants';
 import { PIPELINE_CATEGORIES, PIPELINE_SOURCES } from '../../styles/js/adminTokens';
 import {
-  addPipelineNote, createPipelineLead, deletePipelineLead, errorMessage, fetchPipelineLead, patchPipelineLead,
+  addPipelineNote, createPipelineLead, deletePipelineLead, errorMessage, fetchAccounts, fetchPipelineLead,
+  patchPipelineLead,
 } from '../../services/api';
 import { longDate } from '../../utils/pipeline';
 import { dateTime } from '../../utils/format';
@@ -24,10 +25,14 @@ import { dateTime } from '../../utils/format';
 const EMPTY = {
   name: '', type: '', category: 'CLINIC', phone: '', address: '', source: 'NETWORK_REFERRAL', referredBy: '',
   contactPerson: '', ownerId: '', interested: '', stageId: '', nextAction: '', nextActionDue: '', notes: '',
+  generatedByStaffId: '', closedByStaffId: '', closedAccountId: '',
 };
 
 const FIELDS = ['name', 'type', 'category', 'phone', 'address', 'source', 'referredBy', 'contactPerson', 'ownerId',
-  'interested', 'stageId', 'nextAction', 'nextActionDue', 'notes'];
+  'interested', 'stageId', 'nextAction', 'nextActionDue', 'notes', 'generatedByStaffId', 'closedByStaffId',
+  'closedAccountId'];
+
+const NUMERIC = ['ownerId', 'stageId', 'generatedByStaffId', 'closedByStaffId', 'closedAccountId'];
 
 function toForm(lead) {
   const f = { ...EMPTY };
@@ -41,7 +46,7 @@ function toForm(lead) {
 /** Form value -> wire value. '' becomes null so a cleared field clears on the server. */
 function toWire(key, value) {
   if (value === '') return null;
-  if (key === 'ownerId' || key === 'stageId') return Number(value);
+  if (NUMERIC.includes(key)) return Number(value);
   return value;
 }
 
@@ -50,7 +55,7 @@ function toWire(key, value) {
  * changed, so two operators editing different fields of the same lead don't overwrite each
  * other. The history and milestone dates come from the detail fetch, not the board row.
  */
-export default function LeadDialog({ open, leadId, defaultStageId, stages, owners, canWrite, onClose, onSaved, onDeleted }) {
+export default function LeadDialog({ open, leadId, defaultStageId, stages, owners, staff = [], canWrite, onClose, onSaved, onDeleted }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [detail, setDetail] = useState(null);
@@ -60,6 +65,7 @@ export default function LeadDialog({ open, leadId, defaultStageId, stages, owner
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [armDelete, setArmDelete] = useState(false);
+  const [accounts, setAccounts] = useState(null);
 
   const creating = !leadId;
 
@@ -85,6 +91,17 @@ export default function LeadDialog({ open, leadId, defaultStageId, stages, owner
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
   }, [open, leadId, creating, defaultStageId]);
+
+  const stageKind = stages.find((x) => String(x.id) === form.stageId)?.kind;
+  const closing = stageKind === 'LIVE' && !(detail?.lead?.closedOn);
+  const showClinicLink = stageKind === 'LIVE' || Boolean(detail?.lead?.closedAccountId);
+
+  // The clinic list is only needed to say which account a closed lead became, so it is fetched
+  // the first time that field is shown, not for every lead that is opened.
+  useEffect(() => {
+    if (!open || !showClinicLink || accounts) return;
+    fetchAccounts().then(setAccounts).catch(() => setAccounts([]));
+  }, [open, showClinicLink, accounts]);
 
   const original = useMemo(() => (detail ? toForm(detail.lead) : EMPTY), [detail]);
   const changed = useMemo(() => FIELDS.filter((k) => form[k] !== original[k]), [form, original]);
@@ -148,7 +165,17 @@ export default function LeadDialog({ open, leadId, defaultStageId, stages, owner
   const milestones = lead ? [
     ['Added', lead.addedOn], ['Contacted', lead.contactedOn], ['Demo', lead.demoOn],
     ['Onboarding', lead.onboardingOn], ['Training done', lead.trainingDoneOn], ['Went live', lead.goLiveOn],
+    ['Closed', lead.closedOn],
   ].filter(([, d]) => d) : [];
+
+  const staffOptions = [
+    <MenuItem key="" value="">— Nobody —</MenuItem>,
+    ...staff.map((p) => (
+      <MenuItem key={p.id} value={String(p.id)}>
+        {p.fullName} ({p.employeeCode}){p.status === 'RELEASED' ? ' · released' : ''}
+      </MenuItem>
+    )),
+  ];
 
   const field = (key, label, props = {}) => (
     <TextField
@@ -207,8 +234,37 @@ export default function LeadDialog({ open, leadId, defaultStageId, stages, owner
             })}
           </Grid>
           <Grid item xs={12} sm={6}>
-            {field('stageId', 'Stage', { select: true, children: stages.map((s) => <MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>) })}
+            {field('stageId', 'Stage', {
+              select: true,
+              helperText: closing ? 'Saving closes this lead and credits the person under Closed by.' : ' ',
+              children: stages.map((s) => <MenuItem key={s.id} value={String(s.id)}>{s.name}</MenuItem>),
+            })}
           </Grid>
+          <Grid item xs={12} sm={6}>
+            {field('generatedByStaffId', 'Lead generated by', {
+              select: true,
+              helperText: creating && !form.generatedByStaffId ? 'Blank uses your linked staff profile, if you have one.' : ' ',
+              children: staffOptions,
+            })}
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            {field('closedByStaffId', 'Closed by', {
+              select: true,
+              helperText: closing && !form.closedByStaffId ? 'Blank credits you, if you have a staff profile.' : ' ',
+              children: staffOptions,
+            })}
+          </Grid>
+          {showClinicLink && (
+            <Grid item xs={12}>
+              {field('closedAccountId', 'Clinic this lead became', {
+                select: true,
+                children: [
+                  <MenuItem key="" value="">— Not linked —</MenuItem>,
+                  ...(accounts || []).map((a) => <MenuItem key={a.id} value={String(a.id)}>{a.name}</MenuItem>),
+                ],
+              })}
+            </Grid>
+          )}
           <Grid item xs={12} sm={6}>
             {field('nextActionDue', 'Due date for next action', { type: 'date', InputLabelProps: { shrink: true } })}
           </Grid>

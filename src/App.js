@@ -14,13 +14,18 @@ import LeadsPage from './pages/LeadsPage';
 import PipelinePage from './pages/PipelinePage';
 import GooglePage from './pages/GooglePage';
 import PresencePage from './pages/PresencePage';
+import StaffPage from './pages/StaffPage';
+import StaffDetailPage from './pages/StaffDetailPage';
+import StaffCardPage from './pages/StaffCardPage';
+import LeadCreditPage from './pages/LeadCreditPage';
+import ChangePasswordPage from './pages/ChangePasswordPage';
 
 /**
  * Route guard. Purely a UX convenience - every /api/platform/** route independently requires a
  * platform authority server-side (SecurityConfig + PlatformJwtFilter), so bypassing this in the
  * browser reveals nothing but empty screens and 403s.
  */
-function RequireOperator({ children }) {
+function useOperatorGate() {
   const { operator, loading } = usePlatformAuth();
   if (loading) {
     return (
@@ -32,7 +37,23 @@ function RequireOperator({ children }) {
   if (!operator) {
     return <Navigate to="/login" replace />;
   }
-  return <AppShell>{children}</AppShell>;
+  // The seeded admin starts on a one-time password. The server refuses everything else until it
+  // is changed; sending the browser to the password screen just saves it a wall of 403s.
+  if (operator.mustChangePassword) {
+    return <Navigate to="/change-password" replace />;
+  }
+  return null;
+}
+
+function RequireOperator({ children }) {
+  const blocked = useOperatorGate();
+  return blocked || <AppShell>{children}</AppShell>;
+}
+
+/** Same guard, no app shell: for the card print view, where the page should hold only the cards. */
+function RequireOperatorBare({ children }) {
+  const blocked = useOperatorGate();
+  return blocked || children;
 }
 
 export default function App() {
@@ -53,6 +74,12 @@ export default function App() {
         <Route path="/leads" element={<RequireOperator><LeadsPage /></RequireOperator>} />
         {/* Sales pipeline - clinics we sell to. Not the same thing as /leads (contact-us inbox). */}
         <Route path="/pipeline" element={<RequireOperator><PipelinePage /></RequireOperator>} />
+        {/* The company's own people. Pay, cards and the audit log inside are ADMIN-only on the server. */}
+        <Route path="/staff" element={<RequireOperator><StaffPage /></RequireOperator>} />
+        <Route path="/staff/:id" element={<RequireOperator><StaffDetailPage /></RequireOperator>} />
+        <Route path="/staff/:id/card" element={<RequireOperatorBare><StaffCardPage /></RequireOperatorBare>} />
+        <Route path="/lead-credit" element={<RequireOperator><LeadCreditPage /></RequireOperator>} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
         {/* Clinics is the landing view: "which of our customers needs attention" is the first
             question this portal exists to answer. */}
         <Route path="*" element={<Navigate to="/accounts" replace />} />

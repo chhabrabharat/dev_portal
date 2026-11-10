@@ -91,6 +91,12 @@ export default function LeadCard({ lead, today, nextStage, canWrite, onOpen, onA
           Next: {lead.nextAction}
         </Typography>
       )}
+      {(lead.generatedByName || lead.closedByName) && (
+        <Typography variant="caption" sx={{ color: COLORS.textMuted, display: 'block', mt: 0.5, overflowWrap: 'anywhere' }}>
+          {[lead.generatedByName && `Found by ${lead.generatedByName}`, lead.closedByName && `Closed by ${lead.closedByName}`]
+            .filter(Boolean).join(' · ')}
+        </Typography>
+      )}
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, mt: 1 }}>
         <Typography variant="caption" sx={{ color: COLORS.textMuted, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

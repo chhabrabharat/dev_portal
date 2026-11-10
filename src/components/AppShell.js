@@ -25,6 +25,9 @@ const NAV = [
   // handed to clinics); this is clinics the company is selling to. Two different things that
   // both happen to be called leads, hence the different label.
   { to: '/pipeline', label: 'Pipeline' },
+  // The company's own people, and who generated or closed which sales lead.
+  { to: '/staff', label: 'Staff' },
+  { to: '/lead-credit', label: 'Lead credit' },
 ];
 
 export default function AppShell({ children }) {
@@ -81,6 +84,12 @@ export default function AppShell({ children }) {
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
             {operator?.username}
           </Typography>
+
+          {canWrite && (
+            <Button size="small" component={NavLink} to="/change-password" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+              Password
+            </Button>
+          )}
 
           <Button
             size="small"
