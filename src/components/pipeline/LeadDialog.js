@@ -52,7 +52,7 @@ function toWire(key, value) {
  * changed, so two operators editing different fields of the same lead don't overwrite each
  * other. The history and milestone dates come from the detail fetch, not the board row.
  */
-export default function LeadDialog({ open, leadId, defaultStageId, stages, owners, canWrite, onClose, onSaved, onDeleted }) {
+export default function LeadDialog({ open, leadId, defaultStageId, defaultValues, stages, owners, canWrite, onClose, onSaved, onDeleted }) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const [detail, setDetail] = useState(null);
@@ -74,7 +74,8 @@ export default function LeadDialog({ open, leadId, defaultStageId, stages, owner
     setTab(0);
     if (creating) {
       setDetail(null);
-      setForm({ ...EMPTY, stageId: defaultStageId ? String(defaultStageId) : '' });
+      // defaultValues captured via closure at open time — intentionally not in deps
+      setForm({ ...EMPTY, ...(defaultValues || {}), stageId: defaultStageId ? String(defaultStageId) : '' });
       return;
     }
     let cancelled = false;
@@ -88,6 +89,7 @@ export default function LeadDialog({ open, leadId, defaultStageId, stages, owner
       .catch((e) => !cancelled && setError(errorMessage(e, 'Could not load this lead')))
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, leadId, creating, defaultStageId]);
 
   const original = useMemo(() => (detail ? toForm(detail.lead) : EMPTY), [detail]);
