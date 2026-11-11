@@ -89,7 +89,6 @@ export default function LeadDialog({ open, leadId, defaultStageId, defaultValues
       .catch((e) => !cancelled && setError(errorMessage(e, 'Could not load this lead')))
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, leadId, creating, defaultStageId]);
 
   const original = useMemo(() => (detail ? toForm(detail.lead) : EMPTY), [detail]);
