@@ -12,6 +12,22 @@ import { clearSession, fetchMe, getStoredOperator, getToken, platformLogin, stor
  */
 const PlatformAuthContext = createContext(null);
 
+/**
+ * Pages a role may open. null = every page (PLATFORM_ADMIN, PLATFORM_SUPPORT).
+ * PLATFORM_SALES sees only Usage, Leads and Pipeline. This is navigation, not security: the
+ * server refuses every other /api/platform/** route for that role (PlatformJwtFilter /
+ * CurrentPlatformUserService), so a typed URL gets an empty page and a 403, nothing more.
+ */
+const SALES_PATHS = ['/usage', '/leads', '/pipeline'];
+
+function allowedPathsFor(role) {
+  return role === 'PLATFORM_SALES' ? SALES_PATHS : null;
+}
+
+export function homePathFor(role) {
+  return role === 'PLATFORM_SALES' ? '/pipeline' : '/accounts';
+}
+
 export function PlatformAuthProvider({ children }) {
   const [operator, setOperator] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -60,10 +76,21 @@ export function PlatformAuthProvider({ children }) {
     setOperator(null);
   }, []);
 
-  const canWrite = operator?.role === 'PLATFORM_ADMIN';
+  const role = operator?.role;
+  const canWrite = role === 'PLATFORM_ADMIN';
+  // PLATFORM_SALES works the sales board but changes nothing else. As with canWrite this only
+  // decides what renders; the server re-checks the role on every pipeline write.
+  const canWritePipeline = canWrite || role === 'PLATFORM_SALES';
+  const allowedPaths = allowedPathsFor(role);
+  const canAccess = useCallback(
+    (path) => allowedPaths === null || allowedPaths.some((p) => path === p || path.startsWith(`${p}/`)),
+    [allowedPaths]
+  );
 
   return (
-    <PlatformAuthContext.Provider value={{ operator, loading, login, logout, canWrite, applyOperator }}>
+    <PlatformAuthContext.Provider
+      value={{ operator, loading, login, logout, canWrite, canWritePipeline, canAccess, homePath: homePathFor(role), applyOperator }}
+    >
       {children}
     </PlatformAuthContext.Provider>
   );

@@ -144,6 +144,23 @@ Locally, boot `health` with `APP_PLATFORM_SEED_ENABLED=true` and `APP_PLATFORM_S
 In a deployed environment, insert the row by hand and set `JWT_PLATFORM_SECRET` — the default
 platform signing key is a literal in committed source and is dev-only.
 
+## Sales operators (PLATFORM_SALES)
+
+A third role for the sales team: **Usage, Leads and Pipeline only**. They may work the pipeline
+(add, move, edit and note leads, cold pool), and nothing else is writable: Leads is read-only for
+them (assignment stays an admin action) and Usage rows do not link through to Clinics. The portal
+hides the other nav items and redirects other URLs to `/pipeline`, but that is a courtesy; the
+`health` backend must enforce it:
+
+- `SecurityConfig`: allow `PLATFORM_SALES` on `/api/platform/auth/**`, `/metrics/usage`,
+  `/leads` (GET) and `/pipeline/**` only - every other `/api/platform/**` route stays
+  `hasAnyAuthority("PLATFORM_ADMIN", "PLATFORM_SUPPORT")`.
+- `CurrentPlatformUserService`: an `assertCanWritePipeline()` (ADMIN or SALES) used by
+  `PlatformPipelineController` writes; `assertCanWrite()` stays ADMIN-only everywhere else.
+- `board.owners` should include active SALES operators so leads can be assigned to them.
+
+Creating one is the same insert as any operator, with `role = 'PLATFORM_SALES'`.
+
 ## Google overview
 
 `pages/GooglePage.js` reads `GET /api/platform/google/overview` (`PlatformGoogleController` /

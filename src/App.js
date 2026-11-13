@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import AppShell from './components/AppShell';
@@ -26,7 +26,8 @@ import ChangePasswordPage from './pages/ChangePasswordPage';
  * browser reveals nothing but empty screens and 403s.
  */
 function useOperatorGate() {
-  const { operator, loading } = usePlatformAuth();
+  const { operator, loading, canAccess, homePath } = usePlatformAuth();
+  const { pathname } = useLocation();
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
@@ -42,6 +43,11 @@ function useOperatorGate() {
   if (operator.mustChangePassword) {
     return <Navigate to="/change-password" replace />;
   }
+  // A role limited to some pages (PLATFORM_SALES) lands on its home page instead of one it
+  // cannot use. The server refuses the data behind those pages regardless.
+  if (!canAccess(pathname)) {
+    return <Navigate to={homePath} replace />;
+  }
   return null;
 }
 
@@ -54,6 +60,12 @@ function RequireOperator({ children }) {
 function RequireOperatorBare({ children }) {
   const blocked = useOperatorGate();
   return blocked || children;
+}
+
+/** Clinics for admin/support; Pipeline for sales, who cannot open Clinics. */
+function HomeRedirect() {
+  const { homePath } = usePlatformAuth();
+  return <Navigate to={homePath} replace />;
 }
 
 export default function App() {
@@ -82,7 +94,7 @@ export default function App() {
         <Route path="/change-password" element={<ChangePasswordPage />} />
         {/* Clinics is the landing view: "which of our customers needs attention" is the first
             question this portal exists to answer. */}
-        <Route path="*" element={<Navigate to="/accounts" replace />} />
+        <Route path="*" element={<HomeRedirect />} />
       </Routes>
     </>
   );

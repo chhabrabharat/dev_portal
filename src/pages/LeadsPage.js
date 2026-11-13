@@ -173,7 +173,7 @@ export default function LeadsPage() {
                     )}
                   </TableCell>
                   <TableCell align="right">
-                    <Tooltip title={canWrite ? '' : 'PLATFORM_SUPPORT is read-only'}>
+                    <Tooltip title={canWrite ? '' : 'Your role is read-only'}>
                       <span>
                         <Button
                           size="small"

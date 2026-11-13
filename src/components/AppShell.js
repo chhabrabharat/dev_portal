@@ -31,7 +31,8 @@ const NAV = [
 ];
 
 export default function AppShell({ children }) {
-  const { operator, logout, canWrite } = usePlatformAuth();
+  const { operator, logout, canWrite, canAccess } = usePlatformAuth();
+  const isSales = operator?.role === 'PLATFORM_SALES';
   const navigate = useNavigate();
 
   return (
@@ -43,7 +44,7 @@ export default function AppShell({ children }) {
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 0.5, flexGrow: 1, flexWrap: 'wrap' }}>
-            {NAV.map((item) => (
+            {NAV.filter((item) => canAccess(item.to)).map((item) => (
               <Button
                 key={item.to}
                 component={NavLink}
@@ -67,7 +68,9 @@ export default function AppShell({ children }) {
             title={
               canWrite
                 ? 'PLATFORM_ADMIN - may change clinic status, assign leads and work the pipeline'
-                : 'PLATFORM_SUPPORT - read-only; write actions are disabled'
+                : isSales
+                  ? 'PLATFORM_SALES - Usage, Leads and Pipeline only; may work the pipeline'
+                  : 'PLATFORM_SUPPORT - read-only; write actions are disabled'
             }
           >
             <Chip

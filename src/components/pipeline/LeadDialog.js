@@ -174,7 +174,7 @@ export default function LeadDialog({ open, leadId, defaultStageId, defaultValues
       </DialogTitle>
       <DialogContent sx={{ pt: '0 !important', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         {error && <Alert severity="error" sx={{ mx: 0, mt: 1, mb: 0 }} onClose={() => setError(null)}>{error}</Alert>}
-        {!canWrite && <Alert severity="info" sx={{ mx: 0, mt: 1, mb: 0 }}>PLATFORM_SUPPORT is read-only; fields are shown but cannot be changed.</Alert>}
+        {!canWrite && <Alert severity="info" sx={{ mx: 0, mt: 1, mb: 0 }}>Your role is read-only; fields are shown but cannot be changed.</Alert>}
 
         <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, mt: 1, flexShrink: 0 }}>
           <Tab label="Details" />
