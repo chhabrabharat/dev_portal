@@ -16,7 +16,7 @@ import GooglePanel from '../components/clinics/GooglePanel';
 import StatCard from '../components/StatCard';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
 import {
-  errorMessage, fetchClinicCategoryHistory, fetchClinics, setClinicCategory,
+  errorMessage, fetchClinic, fetchClinicCategoryHistory, setClinicCategory,
 } from '../services/api';
 import { COLORS } from '../styles/js/styleConstants';
 import { categoryToken } from '../styles/js/adminTokens';
@@ -53,11 +53,8 @@ export default function ClinicDetailPage() {
 
   const load = useCallback(async () => {
     try {
-      // The list endpoint already carries every headline figure, so the header reuses it.
-      const [all, h] = await Promise.all([fetchClinics(), fetchClinicCategoryHistory(clinicId)]);
-      const found = all.find((c) => c.id === clinicId);
-      if (!found) { setError('Clinic not found'); return; }
-      setClinic(found); setHistory(h);
+      const [c, h] = await Promise.all([fetchClinic(clinicId), fetchClinicCategoryHistory(clinicId)]);
+      setClinic(c); setHistory(h);
     } catch (e) { setError(errorMessage(e, 'Could not load clinic')); }
   }, [clinicId]);
   useEffect(() => { load(); }, [load]);

@@ -10,6 +10,7 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import TablePagination from '@mui/material/TablePagination';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
@@ -21,7 +22,7 @@ import { Link as RouterLink } from 'react-router-dom';
 import { CategoryChip, ScoreChip } from '../components/clinics/Pills';
 import CategoryDialog from '../components/clinics/CategoryDialog';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
-import { errorMessage, fetchClinicCounts, fetchClinics, setClinicCategoryBulk } from '../services/api';
+import { errorMessage, fetchClinicCounts, fetchClinicsPage, setClinicCategoryBulk } from '../services/api';
 import { COLORS } from '../styles/js/styleConstants';
 import { SCORE_BANDS } from '../styles/js/adminTokens';
 import { count, dateOnly, relativeDays } from '../utils/format';
@@ -40,6 +41,9 @@ export default function ClinicsPage() {
   const { canWrite } = usePlatformAuth();
   const mobile = useMediaQuery('(max-width:760px)');
   const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(50);
   const [counts, setCounts] = useState(null);
   const [category, setCategory] = useState('ALL');
   const [search, setSearch] = useState('');
@@ -54,11 +58,12 @@ export default function ClinicsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [list, c] = await Promise.all([
-        fetchClinics({ category, search, scoreBand: band, sort }),
+      const [res, c] = await Promise.all([
+        fetchClinicsPage({ category, search, scoreBand: band, sort, page, size }),
         fetchClinicCounts(),
       ]);
-      setRows(list);
+      setRows(res.items);
+      setTotal(res.total);
       setCounts(c);
       setSelected([]);
     } catch (e) {
@@ -66,7 +71,10 @@ export default function ClinicsPage() {
     } finally {
       setLoading(false);
     }
-  }, [category, search, band, sort]);
+  }, [category, search, band, sort, page, size]);
+
+  // A new filter or sort starts from the first page; otherwise page 6 of a shorter list shows nothing.
+  useEffect(() => { setPage(0); }, [category, search, band, sort, size]);
 
   useEffect(() => {
     const t = setTimeout(load, 300);
@@ -209,6 +217,14 @@ export default function ClinicsPage() {
           </TableContainer>
         </Card>
       )}
+
+      <TablePagination
+        component="div" count={total} page={page} rowsPerPage={size}
+        rowsPerPageOptions={[25, 50, 100]}
+        onPageChange={(_, p) => setPage(p)}
+        onRowsPerPageChange={(e) => setSize(Number(e.target.value))}
+        labelRowsPerPage="Clinics per page"
+      />
 
       <CategoryDialog
         bulk open={bulkOpen} onClose={() => setBulkOpen(false)}

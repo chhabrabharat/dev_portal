@@ -15,6 +15,7 @@ import {
   errorMessage, fetchClinicBranches, fetchClinicDoctors, revealDoctorContact, revealUserContact,
 } from '../../services/api';
 import { COLORS } from '../../styles/js/styleConstants';
+import PrescriptionSettingsDialog from './PrescriptionSettingsDialog';
 import { count, dateOnly } from '../../utils/format';
 
 const GROUPS = [['OWNER', 'Owner'], ['DOCTOR', 'Doctors'], ['STAFF', 'Staff']];
@@ -99,6 +100,7 @@ export function BranchesPanel({ clinicId }) {
 export function DoctorsPanel({ clinicId }) {
   const { canWrite } = usePlatformAuth();
   const [doctors, setDoctors] = useState(null);
+  const [editing, setEditing] = useState(null);
   const [error, setError] = useState(null);
   useEffect(() => {
     fetchClinicDoctors(clinicId).then(setDoctors).catch((e) => setError(errorMessage(e, 'Could not load doctors')));
@@ -128,8 +130,10 @@ export function DoctorsPanel({ clinicId }) {
               load={() => revealDoctorContact(clinicId, d.id)}
             />
           </Typography>
+          <Button size="small" variant="outlined" sx={{ mt: 1.5 }} onClick={() => setEditing(d)}>Prescription settings</Button>
         </Card>
       ))}
+      <PrescriptionSettingsDialog open={!!editing} doctor={editing} clinicId={clinicId} onClose={() => setEditing(null)} />
     </Box>
   );
 }

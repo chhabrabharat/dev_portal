@@ -13,7 +13,7 @@ import DeleteIcon from '@mui/icons-material/DeleteOutline';
 import { usePlatformAuth } from '../../context/PlatformAuthContext';
 import {
   deleteWhatsappRule, errorMessage, fetchClinicBranches, fetchClinicDoctors, fetchWhatsappEffective,
-  fetchWhatsappRules, fetchWhatsappTemplates, setWhatsappRule,
+  fetchWhatsappRules, fetchWhatsappTemplates, setWhatsappRule, syncWhatsappTemplates,
 } from '../../services/api';
 import { COLORS } from '../../styles/js/styleConstants';
 
@@ -34,6 +34,8 @@ export default function WhatsappPanel({ clinicId }) {
   const [error, setError] = useState(null);
   const [form, setForm] = useState({ scope: 'CLINIC', branchId: '', doctorId: '', kind: '', template: '' });
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -73,6 +75,17 @@ export default function WhatsappPanel({ clinicId }) {
     } finally { setSaving(false); }
   };
 
+  const sync = async () => {
+    setSyncing(true); setSyncMsg(null); setError(null);
+    try {
+      const r = await syncWhatsappTemplates();
+      setSyncMsg(r.status === 'OK'
+        ? { severity: 'success', text: `Synced ${r.found} templates from Meta: ${r.added} new, ${r.updated} changed, ${r.unchanged} unchanged.${r.notOnMeta ? ` ${r.notOnMeta} registered here but not found on Meta (left as is).` : ''}` }
+        : { severity: r.status === 'NOT_CONFIGURED' ? 'info' : 'error', text: r.message });
+      await load();
+    } catch (e) { setError(errorMessage(e, 'Sync failed')); } finally { setSyncing(false); }
+  };
+
   const valid = form.kind && form.template
     && (form.scope !== 'BRANCH' || form.branchId) && (form.scope !== 'DOCTOR' || form.doctorId);
 
@@ -88,6 +101,22 @@ export default function WhatsappPanel({ clinicId }) {
               <Chip size="small" label={r.source === 'DEFAULT' ? 'Default' : pretty(r.source)} sx={{ mt: 0.5 }} />
             </Card>
           ))}
+        </Box>
+      </Box>
+
+      <Box>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Templates (shared by all clinics)</Typography>
+          {canWrite && <Button size="small" variant="outlined" onClick={sync} disabled={syncing}>Sync from Meta</Button>}
+        </Box>
+        {syncMsg && <Alert severity={syncMsg.severity} sx={{ mb: 1 }}>{syncMsg.text}</Alert>}
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          {templates.map((t) => (
+            <Chip key={t.id} size="small" variant="outlined"
+              color={t.status === 'APPROVED' ? 'success' : t.status === 'PENDING' ? 'warning' : 'error'}
+              label={`${t.name} · ${t.status.toLowerCase()}${t.kind ? '' : ' · no message type'}`} />
+          ))}
+          {templates.length === 0 && <Typography sx={{ color: COLORS.textMuted }}>No templates registered.</Typography>}
         </Box>
       </Box>
 
