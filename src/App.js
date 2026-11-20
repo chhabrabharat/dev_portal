@@ -15,6 +15,8 @@ import UsagePage from './pages/UsagePage';
 import TrafficPage from './pages/TrafficPage';
 import LeadsPage from './pages/LeadsPage';
 import PipelinePage from './pages/PipelinePage';
+import BillingPage from './pages/BillingPage';
+import BillingDocumentPage from './pages/BillingDocumentPage';
 import GooglePage from './pages/GooglePage';
 import PresencePage from './pages/PresencePage';
 import StaffPage from './pages/StaffPage';
@@ -97,6 +99,9 @@ export default function App() {
         <Route path="/staff" element={<RequireOperator><StaffPage /></RequireOperator>} />
         <Route path="/staff/:id" element={<RequireOperator><StaffDetailPage /></RequireOperator>} />
         <Route path="/staff/:id/card" element={<RequireOperatorBare><StaffCardPage /></RequireOperatorBare>} />
+        {/* The company's own quotations and invoices to its customers. Not clinic subscription billing. */}
+        <Route path="/billing" element={<RequireOperator><BillingPage /></RequireOperator>} />
+        <Route path="/billing/:id" element={<RequireOperator><BillingDocumentPage /></RequireOperator>} />
         <Route path="/lead-credit" element={<RequireOperator><LeadCreditPage /></RequireOperator>} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
         {/* Clinics is the landing view: "which of our customers needs attention" is the first

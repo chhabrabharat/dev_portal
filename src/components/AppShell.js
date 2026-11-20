@@ -30,6 +30,8 @@ const NAV = [
   // The company's own people, and who generated or closed which sales lead.
   { to: '/staff', label: 'Staff' },
   { to: '/lead-credit', label: 'Lead credit' },
+  // NRVN's own quotations and invoices to the customers it does web/software/SEO work for.
+  { to: '/billing', label: 'Billing' },
 ];
 
 export default function AppShell({ children }) {

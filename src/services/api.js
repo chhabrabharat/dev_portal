@@ -522,3 +522,35 @@ export const importPipeline = async (payload) => {
   const { data } = await api.post('/platform/pipeline/import', payload);
   return data;
 };
+
+// ---- Sales documents: the company's own quotations and invoices (NRVN to its customers) ----
+// Distinct from the subscription invoices on a clinic's account. Money here is paise.
+
+export const fetchSalesDocuments = async (type) => {
+  const { data } = await api.get('/platform/sales-documents', { params: type ? { type } : {} });
+  return data;
+};
+
+export const fetchSalesDocument = async (id) => {
+  const { data } = await api.get(`/platform/sales-documents/${id}`);
+  return data;
+};
+
+export const createSalesDocument = async (payload) => {
+  const { data } = await api.post('/platform/sales-documents', payload);
+  return data;
+};
+
+export const updateSalesDocument = async (id, payload) => {
+  const { data } = await api.put(`/platform/sales-documents/${id}`, payload);
+  return data;
+};
+
+export const convertQuotationToInvoice = async (id) => {
+  const { data } = await api.post(`/platform/sales-documents/${id}/convert`);
+  return data;
+};
+
+export const deleteSalesDocument = async (id) => {
+  await api.delete(`/platform/sales-documents/${id}`);
+};
