@@ -13,6 +13,7 @@ import CategoryDialog from '../components/clinics/CategoryDialog';
 import { BranchesPanel, DoctorsPanel } from '../components/clinics/PeoplePanel';
 import WhatsappPanel from '../components/clinics/WhatsappPanel';
 import GooglePanel from '../components/clinics/GooglePanel';
+import BillingPanel from '../components/clinics/BillingPanel';
 import StatCard from '../components/StatCard';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
 import {
@@ -89,6 +90,7 @@ export default function ClinicDetailPage() {
         <Tab label="Doctors" />
         <Tab label="WhatsApp" />
         <Tab label="Google listing" />
+        <Tab label="Billing" />
       </Tabs>
 
       {tab === 0 && (
@@ -112,6 +114,7 @@ export default function ClinicDetailPage() {
       {tab === 2 && <DoctorsPanel clinicId={clinicId} />}
       {tab === 3 && <WhatsappPanel clinicId={clinicId} />}
       {tab === 4 && <GooglePanel clinicId={clinicId} />}
+      {tab === 5 && <BillingPanel clinicId={clinicId} />}
 
       <CategoryDialog
         open={dialog} onClose={() => setDialog(false)} title="Change category"

@@ -30,18 +30,20 @@ const SAMPLE_ITEMS = [
 
 const emptyItem = () => ({ description: '', detail: '', amount: '' });
 
-function toForm(doc, docType) {
+function toForm(doc, docType, prefill) {
   if (!doc) {
+    const p = prefill || {};
+    const guessed = guessIntraState(p.clientGstin);
     return {
       docType,
       docDate: new Date().toISOString().slice(0, 10),
       dueDate: '',
-      clientName: '',
-      clientAddress: '',
-      clientGstin: '',
-      clientEmail: '',
-      clientPhone: '',
-      intraState: true,
+      clientName: p.clientName || '',
+      clientAddress: p.clientAddress || '',
+      clientGstin: (p.clientGstin || '').toUpperCase(),
+      clientEmail: p.clientEmail || '',
+      clientPhone: p.clientPhone || '',
+      intraState: guessed === null ? true : guessed,
       gstRate: '18',
       advancePercent: '50',
       advanceReceived: '',
@@ -76,17 +78,17 @@ function toForm(doc, docType) {
  * bottom mirrors the server arithmetic so the operator sees GST and balance before saving. The
  * server recomputes everything on save - this preview is a convenience, not the record.
  */
-export default function SalesDocumentDialog({ open, onClose, onSave, doc, docType }) {
-  const [form, setForm] = useState(() => toForm(doc, docType));
+export default function SalesDocumentDialog({ open, onClose, onSave, doc, docType, prefill, accountId }) {
+  const [form, setForm] = useState(() => toForm(doc, docType, prefill));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (open) {
-      setForm(toForm(doc, docType));
+      setForm(toForm(doc, docType, prefill));
       setError(null);
     }
-  }, [open, doc, docType]);
+  }, [open, doc, docType, prefill]);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const setItem = (idx, key) => (e) => setForm((f) => {
@@ -117,8 +119,9 @@ export default function SalesDocumentDialog({ open, onClose, onSave, doc, docTyp
     advanceReceivedPaise: rupeesToPaise(form.advanceReceived),
     status: form.status,
     notes: form.notes || null,
+    accountId: doc ? doc.accountId ?? null : accountId ?? null,
     items: form.items.map((i) => ({ description: i.description, detail: i.detail || null, amountPaise: rupeesToPaise(i.amount) })),
-  }), [form]);
+  }), [form, doc, accountId]);
 
   const totals = useMemo(() => computeTotals(payload), [payload]);
   const isInvoice = form.docType === 'INVOICE';
@@ -147,6 +150,9 @@ export default function SalesDocumentDialog({ open, onClose, onSave, doc, docTyp
       <DialogTitle>{title}</DialogTitle>
       <DialogContent sx={{ display: 'grid', gap: 2, pt: '8px !important' }}>
         {error && <Alert severity="error">{error}</Alert>}
+        {!doc && prefill && (
+          <Alert severity="info">Pre-filled from the clinic's own record. Check the address and GSTIN before creating.</Alert>
+        )}
 
         <Typography variant="overline" sx={{ color: COLORS.textMuted }}>Client</Typography>
         <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
