@@ -193,7 +193,11 @@ export default function BillingPage() {
                       <Typography component={RouterLink} to={`/billing/${r.id}`} sx={{ fontWeight: 600, color: COLORS.primary, textDecoration: 'none' }}>{r.docNumber}</Typography>
                     </TableCell>
                     <TableCell>{r.docType === 'INVOICE' ? 'Invoice' : 'Quotation'}</TableCell>
-                    <TableCell>{r.clientName}</TableCell>
+                    <TableCell>
+                      {r.accountId
+                        ? <Typography component={RouterLink} to={`/clinics/${r.accountId}`} sx={{ color: 'inherit', fontSize: 'inherit' }}>{r.clientName}</Typography>
+                        : r.clientName}
+                    </TableCell>
                     <TableCell>{dateOnly(r.docDate)}</TableCell>
                     <TableCell>{dateOnly(r.dueDate)}</TableCell>
                     <TableCell><StatusPill status={r.status} /></TableCell>

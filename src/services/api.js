@@ -526,8 +526,17 @@ export const importPipeline = async (payload) => {
 // ---- Sales documents: the company's own quotations and invoices (NRVN to its customers) ----
 // Distinct from the subscription invoices on a clinic's account. Money here is paise.
 
-export const fetchSalesDocuments = async (type) => {
-  const { data } = await api.get('/platform/sales-documents', { params: type ? { type } : {} });
+export const fetchSalesDocuments = async (type, accountId) => {
+  const params = {};
+  if (type) params.type = type;
+  if (accountId) params.accountId = accountId;
+  const { data } = await api.get('/platform/sales-documents', { params });
+  return data;
+};
+
+/** The clinic's name, GST number, address and contacts, to seed a new document from its page. */
+export const fetchSalesDocumentPrefill = async (accountId) => {
+  const { data } = await api.get(`/platform/sales-documents/prefill/clinic/${accountId}`);
   return data;
 };
 
