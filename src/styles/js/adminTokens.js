@@ -132,3 +132,39 @@ export function presenceScoreToken(score) {
   if (score >= 50) return { fg: '#92400e', bg: '#fef3c7' };
   return { fg: '#7f1d1d', bg: '#fee2e2' };
 }
+
+/**
+ * Clinics tab. The category is a soft tracking label kept by the company - it changes nothing for
+ * the clinic. UNCLASSIFIED is not a stored value: it is what a clinic with no row shows.
+ */
+export const CATEGORY_COLORS = {
+  DEMO: { fg: '#5b21b6', bg: '#ede9fe', label: 'Demo' },
+  TRIAL: { fg: '#92400e', bg: '#fef3c7', label: 'Trial' },
+  PAID: { fg: '#065f46', bg: '#d1fae5', label: 'Paid' },
+  INACTIVE: { fg: '#7f1d1d', bg: '#fee2e2', label: 'Inactive' },
+  UNCLASSIFIED: { fg: COLORS.textMuted, bg: '#f1f5f9', label: 'Unclassified' },
+};
+export const SETTABLE_CATEGORIES = ['DEMO', 'TRIAL', 'PAID', 'INACTIVE'];
+export function categoryToken(category) {
+  return CATEGORY_COLORS[category] || CATEGORY_COLORS.UNCLASSIFIED;
+}
+
+/** Google listing score bands; mirrors PlatformClinicTrackingService.bandOf (LOW <50, MEDIUM 50-79, HIGH 80+). */
+export const SCORE_BANDS = {
+  HIGH: { fg: '#065f46', bg: '#d1fae5', label: 'High' },
+  MEDIUM: { fg: '#92400e', bg: '#fef3c7', label: 'Medium' },
+  LOW: { fg: '#7f1d1d', bg: '#fee2e2', label: 'Low' },
+  NOT_CONNECTED: { fg: COLORS.textMuted, bg: '#f1f5f9', label: 'Not connected' },
+};
+export function scoreBand(score, status) {
+  if (score === null || score === undefined || status === 'NOT_CONNECTED') return 'NOT_CONNECTED';
+  if (score >= 80) return 'HIGH';
+  if (score >= 50) return 'MEDIUM';
+  return 'LOW';
+}
+
+/** Booking sources, in BookingSource.ORDER on the backend. */
+export const BOOKING_SOURCES = [
+  ['PUBLIC_PAGE', 'Website'], ['GOOGLE', 'Google'], ['WHATSAPP', 'WhatsApp'],
+  ['STAFF', 'Staff'], ['WALK_IN', 'Walk-in'], ['NOT_RECORDED', 'Not recorded'],
+];

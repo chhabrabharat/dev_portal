@@ -11,7 +11,9 @@ import { usePlatformAuth } from '../context/PlatformAuthContext';
 import { COLORS, LAYOUT, SHADOWS } from '../styles/js/styleConstants';
 
 const NAV = [
-  { to: '/accounts', label: 'Clinics' },
+  { to: '/clinics', label: 'Clinics' },
+  // Status, plan, features and entitlements per clinic (the lifecycle side of the same clinics).
+  { to: '/accounts', label: 'Accounts' },
   { to: '/usage', label: 'Usage' },
   // Next to Usage rather than beside Leads: both answer "is this clinic getting anything out of
   // us", one from inside the app and one from the public page.
@@ -25,10 +27,14 @@ const NAV = [
   // handed to clinics); this is clinics the company is selling to. Two different things that
   // both happen to be called leads, hence the different label.
   { to: '/pipeline', label: 'Pipeline' },
+  // The company's own people, and who generated or closed which sales lead.
+  { to: '/staff', label: 'Staff' },
+  { to: '/lead-credit', label: 'Lead credit' },
 ];
 
 export default function AppShell({ children }) {
-  const { operator, logout, canWrite } = usePlatformAuth();
+  const { operator, logout, canWrite, canAccess } = usePlatformAuth();
+  const isSales = operator?.role === 'PLATFORM_SALES';
   const navigate = useNavigate();
 
   return (
@@ -40,7 +46,7 @@ export default function AppShell({ children }) {
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 0.5, flexGrow: 1, flexWrap: 'wrap' }}>
-            {NAV.map((item) => (
+            {NAV.filter((item) => canAccess(item.to)).map((item) => (
               <Button
                 key={item.to}
                 component={NavLink}
@@ -64,7 +70,9 @@ export default function AppShell({ children }) {
             title={
               canWrite
                 ? 'PLATFORM_ADMIN - may change clinic status, assign leads and work the pipeline'
-                : 'PLATFORM_SUPPORT - read-only; write actions are disabled'
+                : isSales
+                  ? 'PLATFORM_SALES - Usage, Leads and Pipeline only; may work the pipeline'
+                  : 'PLATFORM_SUPPORT - read-only; write actions are disabled'
             }
           >
             <Chip
@@ -81,6 +89,12 @@ export default function AppShell({ children }) {
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.85)' }}>
             {operator?.username}
           </Typography>
+
+          {canWrite && (
+            <Button size="small" component={NavLink} to="/change-password" sx={{ color: 'rgba(255,255,255,0.85)' }}>
+              Password
+            </Button>
+          )}
 
           <Button
             size="small"

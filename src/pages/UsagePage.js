@@ -16,6 +16,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import StatusChip from '../components/StatusChip';
 import StatCard from '../components/StatCard';
+import { usePlatformAuth } from '../context/PlatformAuthContext';
 import { errorMessage, fetchUsage } from '../services/api';
 import { COLORS } from '../styles/js/styleConstants';
 import { count, daysAgo, money, today } from '../utils/format';
@@ -29,6 +30,9 @@ const PRESETS = [
 
 export default function UsagePage() {
   const navigate = useNavigate();
+  // Sales cannot open a clinic's detail page, so the rows are not links for them.
+  const { canAccess } = usePlatformAuth();
+  const rowsLink = canAccess('/accounts');
   const [from, setFrom] = useState(daysAgo(30));
   const [to, setTo] = useState(today());
   const [report, setReport] = useState(null);
@@ -144,9 +148,9 @@ export default function UsagePage() {
                       <TableRow
                         key={r.accountId}
                         hover
-                        onClick={() => navigate(`/accounts/${r.accountId}`)}
+                        onClick={rowsLink ? () => navigate(`/accounts/${r.accountId}`) : undefined}
                         sx={{
-                          cursor: 'pointer',
+                          cursor: rowsLink ? 'pointer' : 'default',
                           // Tint the rows that are the actual finding of this report.
                           backgroundColor: idle ? '#fff7ed' : undefined,
                         }}

@@ -12,6 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { COLORS, SHADOWS } from '../../styles/js/styleConstants';
 import { PIPELINE_CATEGORIES } from '../../styles/js/adminTokens';
 import { addColdLeadToPipeline, errorMessage, fetchColdPool } from '../../services/api';
+import ColdImportPanel from './ColdImportPanel';
 
 const PAGE = 40;
 
@@ -30,6 +31,7 @@ export default function ColdPoolDrawer({ open, onClose, canWrite, onAdded }) {
   const [error, setError] = useState(null);
   const [limit, setLimit] = useState(PAGE);
   const [addingId, setAddingId] = useState(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,6 +83,12 @@ export default function ColdPoolDrawer({ open, onClose, canWrite, onAdded }) {
       <Typography variant="caption" sx={{ color: COLORS.textMuted, px: 2, pb: 1 }}>
         From Google, most-reviewed first. Adding one creates a lead in New and removes it here.
       </Typography>
+      <Box sx={{ px: 2, pb: 1 }}>
+        <Button size="small" disabled={!canWrite} onClick={() => setImportOpen((o) => !o)}>
+          {importOpen ? 'Hide import' : 'Import CSV'}
+        </Button>
+      </Box>
+      {importOpen && <ColdImportPanel disabled={!canWrite} onImported={load} />}
       <Box sx={{ display: 'flex', gap: 1, px: 2, pb: 1 }}>
         <TextField size="small" label="Search" value={search} onChange={(e) => setSearch(e.target.value)} sx={{ flex: 1 }} />
         <TextField select size="small" label="Category" value={category} onChange={(e) => setCategory(e.target.value)} sx={{ minWidth: 120 }}>

@@ -23,6 +23,7 @@ import PipelineBoard from '../components/pipeline/PipelineBoard';
 import NeedsActionPanel from '../components/pipeline/NeedsActionPanel';
 import ColdPoolDrawer from '../components/pipeline/ColdPoolDrawer';
 import LeadDialog from '../components/pipeline/LeadDialog';
+import QuickLeadEntry from '../components/pipeline/QuickLeadEntry';
 
 // The app has no websocket; a 20s poll of one GET keeps every operator's board current without
 // building a push channel for a team of a handful. Paused while the tab is hidden.
@@ -37,7 +38,8 @@ const STAT_KEYS = [
 ];
 
 export default function PipelinePage() {
-  const { canWrite } = usePlatformAuth();
+  // Sales works the board too; canWritePipeline is admin or sales.
+  const { canWritePipeline: canWrite } = usePlatformAuth();
   const [board, setBoard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -46,7 +48,7 @@ export default function PipelinePage() {
   const [pool, setPool] = useState('all');
   const [dueOnly, setDueOnly] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [dialog, setDialog] = useState({ open: false, leadId: null, stageId: null });
+  const [dialog, setDialog] = useState({ open: false, leadId: null, stageId: null, defaultValues: {} });
   const [busyId, setBusyId] = useState(null);
   const [reminder, setReminder] = useState(null);
   const inFlight = useRef(false);
@@ -151,7 +153,8 @@ export default function PipelinePage() {
     act(id, () => movePipelineLead(id, stageId));
   };
 
-  const openLead = (leadId) => setDialog({ open: true, leadId, stageId: null });
+  const openLead = (leadId) => setDialog({ open: true, leadId, stageId: null, defaultValues: {} });
+  const openQuickEntry = (parsed) => setDialog({ open: true, leadId: null, stageId: stages[0]?.id || null, defaultValues: parsed });
 
   const toggleReminder = async (on) => {
     try {
@@ -223,7 +226,7 @@ export default function PipelinePage() {
         <Button variant="outlined" size="small" onClick={() => setDrawerOpen(true)}>
           Cold pool
         </Button>
-        <Tooltip title={canWrite ? '' : 'PLATFORM_SUPPORT is read-only'}>
+        <Tooltip title={canWrite ? '' : 'Your role is read-only'}>
           <span>
             <Button variant="contained" size="small" disabled={!canWrite} onClick={() => setDialog({ open: true, leadId: null, stageId: stages[0]?.id || null })}>
               + New lead
@@ -231,6 +234,8 @@ export default function PipelinePage() {
           </span>
         </Tooltip>
       </Box>
+
+      <QuickLeadEntry onSubmit={openQuickEntry} disabled={!canWrite} />
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
       {loading && !board && <LinearProgress sx={{ mb: 2 }} />}
@@ -285,6 +290,7 @@ export default function PipelinePage() {
         open={dialog.open}
         leadId={dialog.leadId}
         defaultStageId={dialog.stageId}
+        defaultValues={dialog.defaultValues || {}}
         stages={stages}
         owners={board?.owners || []}
         canWrite={canWrite}
