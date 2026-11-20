@@ -21,10 +21,10 @@ import SalesDocumentDialog from '../components/billing/SalesDocumentDialog';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
 import {
   convertQuotationToInvoice, createSalesDocument, deleteSalesDocument, errorMessage, fetchSalesDocument,
-  fetchSalesDocuments, updateSalesDocument,
+  fetchSalesDocuments, setSalesDocumentStatus, updateSalesDocument,
 } from '../services/api';
 import { COLORS } from '../styles/js/styleConstants';
-import { STATUS_TOKENS, paise } from '../utils/billing';
+import { STATUS_TOKENS, nestRows, paise } from '../utils/billing';
 import { dateOnly } from '../utils/format';
 
 function StatusPill({ status }) {
@@ -69,6 +69,17 @@ export default function BillingPage() {
     if (r.docType === 'QUOTATION' && (r.status === 'DRAFT' || r.status === 'SENT')) acc.openQuotes += r.totalPaise;
     return acc;
   }, { invoiced: 0, outstanding: 0, openQuotes: 0 }), [rows]);
+
+  const nested = useMemo(() => nestRows(rows), [rows]);
+
+  const markPaid = async (row) => {
+    try {
+      await setSalesDocumentStatus(row.id, 'PAID');
+      await load();
+    } catch (e) {
+      setError(errorMessage(e, 'Could not mark paid'));
+    }
+  };
 
   const openNew = (docType) => setDialog({ doc: null, docType });
   const openEdit = async (id) => {
@@ -155,14 +166,16 @@ export default function BillingPage() {
         )}
         {rows.length > 0 && (compact ? (
           <Box sx={{ display: 'grid', gap: 1, p: 1 }}>
-            {rows.map((r) => (
-              <Card key={r.id} variant="outlined" sx={{ p: 1.5, display: 'grid', gap: 0.5 }}>
+            {nested.map((r) => (
+              <Card key={r.id} variant="outlined" sx={{ p: 1.5, display: 'grid', gap: 0.5, ml: r.depth ? 2 : 0 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
                   <Typography component={RouterLink} to={`/billing/${r.id}`} sx={{ fontWeight: 700, color: COLORS.primary, textDecoration: 'none' }}>{r.docNumber}</Typography>
                   <StatusPill status={r.status} />
                 </Box>
                 <Typography variant="body2">{r.clientName}</Typography>
-                <Typography variant="caption" sx={{ color: COLORS.textMuted }}>{dateOnly(r.docDate)} · {r.docType === 'INVOICE' ? 'Invoice' : 'Quotation'}</Typography>
+                <Typography variant="caption" sx={{ color: COLORS.textMuted }}>
+                  {dateOnly(r.docDate)} · {r.docType === 'INVOICE' ? 'Invoice' : 'Quotation'}{r.installmentNo ? ` · Installment ${r.installmentNo}` : ''}
+                </Typography>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span>Total {paise(r.totalPaise)}</span>
                   {r.docType === 'INVOICE' && <strong>Due {paise(r.balanceDuePaise)}</strong>}
@@ -187,12 +200,13 @@ export default function BillingPage() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id} hover>
-                    <TableCell>
+                {nested.map((r) => (
+                  <TableRow key={r.id} hover sx={r.depth ? { '& td': { bgcolor: '#fafcff' } } : undefined}>
+                    <TableCell sx={{ pl: r.depth ? 4 : 2 }}>
+                      {r.depth ? <span style={{ color: COLORS.textMuted, marginRight: 6 }}>↳</span> : null}
                       <Typography component={RouterLink} to={`/billing/${r.id}`} sx={{ fontWeight: 600, color: COLORS.primary, textDecoration: 'none' }}>{r.docNumber}</Typography>
                     </TableCell>
-                    <TableCell>{r.docType === 'INVOICE' ? 'Invoice' : 'Quotation'}</TableCell>
+                    <TableCell>{r.docType === 'INVOICE' ? (r.installmentNo ? `Installment ${r.installmentNo}` : 'Invoice') : 'Quotation'}</TableCell>
                     <TableCell>
                       {r.accountId
                         ? <Typography component={RouterLink} to={`/clinics/${r.accountId}`} sx={{ color: 'inherit', fontSize: 'inherit' }}>{r.clientName}</Typography>
@@ -206,10 +220,16 @@ export default function BillingPage() {
                     <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                       <Button size="small" component={RouterLink} to={`/billing/${r.id}`}>View</Button>
                       {canWrite && <Button size="small" onClick={() => openEdit(r.id)}>Edit</Button>}
-                      {canWrite && r.docType === 'QUOTATION' && r.status !== 'CANCELLED' && (
-                        <Tooltip title="Create an invoice with the same items; the quotation is marked accepted">
+                      {r.docType === 'QUOTATION' && r.installmentCount > 0 && (
+                          <Button size="small" component={RouterLink} to={`/billing/${r.id}`}>Installments</Button>
+                        )}
+                        {canWrite && r.docType === 'QUOTATION' && !r.installmentCount && r.status !== 'CANCELLED' && (
+                        <Tooltip title="Whole-package invoice. For a quotation with installments, open it and raise per installment instead.">
                           <Button size="small" onClick={() => convert(r)}>To invoice</Button>
                         </Tooltip>
+                      )}
+                      {canWrite && r.docType === 'INVOICE' && r.status !== 'PAID' && r.status !== 'CANCELLED' && (
+                        <Button size="small" color="success" onClick={() => markPaid(r)}>Mark paid</Button>
                       )}
                       {canWrite && r.status === 'DRAFT' && <Button size="small" color="error" onClick={() => remove(r)}>Delete</Button>}
                     </TableCell>

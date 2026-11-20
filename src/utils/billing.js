@@ -16,12 +16,13 @@ export const COMPANY = {
   phones: '8588818012 / 9901956000',
 };
 
-export const DOC_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'PAID', 'CANCELLED'];
+export const DOC_STATUSES = ['DRAFT', 'SENT', 'ACCEPTED', 'PARTIALLY_PAID', 'PAID', 'CANCELLED'];
 
 export const STATUS_TOKENS = {
   DRAFT: { fg: '#475569', bg: '#f1f5f9', label: 'Draft' },
   SENT: { fg: '#1e40af', bg: '#dbeafe', label: 'Sent' },
   ACCEPTED: { fg: '#065f46', bg: '#d1fae5', label: 'Accepted' },
+  PARTIALLY_PAID: { fg: '#92400e', bg: '#fef3c7', label: 'Partially paid' },
   PAID: { fg: '#065f46', bg: '#d1fae5', label: 'Paid' },
   CANCELLED: { fg: '#7f1d1d', bg: '#fee2e2', label: 'Cancelled' },
 };
@@ -65,6 +66,41 @@ export function guessIntraState(clientGstin) {
   const g = (clientGstin || '').trim();
   if (g.length < 2) return null;
   return g.slice(0, 2) === COMPANY.stateCode;
+}
+
+export const DEFAULT_INSTALLMENT_TERMS =
+  'Each stage is delivered on receipt of its installment. An invoice is raised per installment when it falls due. '
+  + 'Work not paid for remains the property of NRVN Informatics Private Limited.';
+
+/** Split a subtotal (paise) into n near-equal parts, remainder on the last so it adds up exactly. */
+export function splitEqually(subtotalPaise, n) {
+  const base = Math.floor(subtotalPaise / n / 100) * 100;
+  const parts = Array.from({ length: n }, () => base);
+  parts[n - 1] = subtotalPaise - base * (n - 1);
+  return parts;
+}
+
+/**
+ * Orders a flat list so each installment invoice sits under its quotation. Rows already come
+ * newest-first; children keep installment order under their parent, orphans stay where they are.
+ */
+export function nestRows(rows) {
+  const byParent = new Map();
+  for (const r of rows) {
+    if (r.parentId) {
+      if (!byParent.has(r.parentId)) byParent.set(r.parentId, []);
+      byParent.get(r.parentId).push(r);
+    }
+  }
+  const parentIds = new Set(rows.map((r) => r.id));
+  const out = [];
+  for (const r of rows) {
+    if (r.parentId && parentIds.has(r.parentId)) continue;
+    out.push({ ...r, depth: 0 });
+    const kids = (byParent.get(r.id) || []).slice().sort((a, b) => (a.installmentNo || 0) - (b.installmentNo || 0));
+    for (const k of kids) out.push({ ...k, depth: 1 });
+  }
+  return out;
 }
 
 export function longDate(iso) {

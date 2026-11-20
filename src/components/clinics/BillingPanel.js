@@ -18,9 +18,10 @@ import SalesDocumentDialog from '../billing/SalesDocumentDialog';
 import { usePlatformAuth } from '../../context/PlatformAuthContext';
 import {
   convertQuotationToInvoice, createSalesDocument, errorMessage, fetchSalesDocumentPrefill, fetchSalesDocuments,
+  setSalesDocumentStatus,
 } from '../../services/api';
 import { COLORS } from '../../styles/js/styleConstants';
-import { STATUS_TOKENS, paise } from '../../utils/billing';
+import { STATUS_TOKENS, nestRows, paise } from '../../utils/billing';
 import { dateOnly } from '../../utils/format';
 
 /**
@@ -56,6 +57,15 @@ export default function BillingPanel({ clinicId }) {
       setDialog({ docType, prefill });
     } catch (e) {
       setError(errorMessage(e, 'Could not read the clinic record'));
+    }
+  };
+
+  const markPaid = async (row) => {
+    try {
+      await setSalesDocumentStatus(row.id, 'PAID');
+      await load();
+    } catch (e) {
+      setError(errorMessage(e, 'Could not mark paid'));
     }
   };
 
@@ -106,24 +116,31 @@ export default function BillingPanel({ clinicId }) {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.map((r) => {
+                {nestRows(rows).map((r) => {
                   const t = STATUS_TOKENS[r.status] || STATUS_TOKENS.DRAFT;
                   return (
-                    <TableRow key={r.id} hover>
-                      <TableCell>
+                    <TableRow key={r.id} hover sx={r.depth ? { '& td': { bgcolor: '#fafcff' } } : undefined}>
+                      <TableCell sx={{ pl: r.depth ? 4 : 2 }}>
+                        {r.depth ? <span style={{ color: COLORS.textMuted, marginRight: 6 }}>↳</span> : null}
                         <Typography component={RouterLink} to={`/billing/${r.id}`} sx={{ fontWeight: 600, color: COLORS.primary, textDecoration: 'none' }}>{r.docNumber}</Typography>
                       </TableCell>
-                      <TableCell>{r.docType === 'INVOICE' ? 'Invoice' : 'Quotation'}</TableCell>
+                      <TableCell>{r.docType === 'INVOICE' ? (r.installmentNo ? `Installment ${r.installmentNo}` : 'Invoice') : 'Quotation'}</TableCell>
                       <TableCell>{dateOnly(r.docDate)}</TableCell>
                       <TableCell><Chip size="small" label={t.label} sx={{ color: t.fg, bgcolor: t.bg, fontWeight: 600 }} /></TableCell>
                       <TableCell align="right">{paise(r.totalPaise)}</TableCell>
                       <TableCell align="right">{r.docType === 'INVOICE' ? paise(r.balanceDuePaise) : '—'}</TableCell>
                       <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
                         <Button size="small" component={RouterLink} to={`/billing/${r.id}`}>View / print</Button>
-                        {canWrite && r.docType === 'QUOTATION' && r.status !== 'CANCELLED' && (
-                          <Tooltip title="Create an invoice with the same items; the quotation is marked accepted">
+                        {r.docType === 'QUOTATION' && r.installmentCount > 0 && (
+                          <Button size="small" component={RouterLink} to={`/billing/${r.id}`}>Installments</Button>
+                        )}
+                        {canWrite && r.docType === 'QUOTATION' && !r.installmentCount && r.status !== 'CANCELLED' && (
+                          <Tooltip title="Whole-package invoice. For a quotation with installments, open it and raise per installment instead.">
                             <Button size="small" onClick={() => convert(r)}>To invoice</Button>
                           </Tooltip>
+                        )}
+                        {canWrite && r.docType === 'INVOICE' && r.status !== 'PAID' && r.status !== 'CANCELLED' && (
+                          <Button size="small" color="success" onClick={() => markPaid(r)}>Mark paid</Button>
                         )}
                       </TableCell>
                     </TableRow>
