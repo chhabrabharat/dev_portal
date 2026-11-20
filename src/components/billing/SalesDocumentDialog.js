@@ -18,8 +18,8 @@ import AddIcon from '@mui/icons-material/Add';
 import { errorMessage } from '../../services/api';
 import { COLORS } from '../../styles/js/styleConstants';
 import {
-  DOC_STATUSES, STATUS_TOKENS, bpToPercent, computeTotals, guessIntraState, paise, paiseToRupees,
-  percentToBp, rupeesToPaise,
+  DEFAULT_INSTALLMENT_TERMS, DOC_STATUSES, STATUS_TOKENS, bpToPercent, computeTotals, guessIntraState, paise,
+  paiseToRupees, percentToBp, rupeesToPaise, splitEqually,
 } from '../../utils/billing';
 
 const SAMPLE_ITEMS = [
@@ -29,6 +29,7 @@ const SAMPLE_ITEMS = [
 ];
 
 const emptyItem = () => ({ description: '', detail: '', amount: '' });
+const emptyInstallment = () => ({ label: '', amount: '', unlocks: '' });
 
 function toForm(doc, docType, prefill) {
   if (!doc) {
@@ -52,6 +53,7 @@ function toForm(doc, docType, prefill) {
         ? 'Work begins once the advance is received. Balance payable on delivery. Changes beyond the agreed scope are quoted separately.'
         : 'Payment by bank transfer or UPI to the account below. Balance payable within 7 days of invoice.',
       items: SAMPLE_ITEMS.map((i) => ({ ...i })),
+      installments: [],
     };
   }
   return {
@@ -70,6 +72,7 @@ function toForm(doc, docType, prefill) {
     status: doc.status,
     notes: doc.notes || '',
     items: (doc.items || []).map((i) => ({ description: i.description || '', detail: i.detail || '', amount: paiseToRupees(i.amountPaise) })),
+    installments: (doc.installments || []).map((i) => ({ label: i.label || '', amount: paiseToRupees(i.amountPaise), unlocks: i.unlocks || '', locked: !!i.invoiceId })),
   };
 }
 
@@ -98,6 +101,27 @@ export default function SalesDocumentDialog({ open, onClose, onSave, doc, docTyp
   const addItem = () => setForm((f) => ({ ...f, items: [...f.items, emptyItem()] }));
   const removeItem = (idx) => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }));
 
+  const setInst = (idx, key) => (e) => setForm((f) => ({
+    ...f, installments: f.installments.map((it, i) => (i === idx ? { ...it, [key]: e.target.value } : it)),
+  }));
+  const addInst = () => setForm((f) => ({ ...f, installments: [...f.installments, emptyInstallment()] }));
+  const removeInst = (idx) => setForm((f) => ({ ...f, installments: f.installments.filter((_, i) => i !== idx) }));
+  const useInstallments = form.docType === 'QUOTATION' && form.installments.length > 0;
+  const anyLocked = form.installments.some((i) => i.locked);
+  const startInstallments = (n) => setForm((f) => {
+    const subtotal = f.items.reduce((sum, it) => sum + rupeesToPaise(it.amount), 0);
+    const parts = splitEqually(subtotal, n);
+    const labels = n === 2 ? ['On signing', 'On delivery'] : ['On signing', 'On delivery', 'After go-live'];
+    const notes = f.notes && f.notes.includes('installment') ? f.notes : DEFAULT_INSTALLMENT_TERMS;
+    return {
+      ...f,
+      advancePercent: '',
+      notes,
+      installments: parts.map((p, i) => ({ label: labels[i] || `Installment ${i + 1}`, amount: paiseToRupees(p), unlocks: '' })),
+    };
+  });
+  const clearInstallments = () => setForm((f) => ({ ...f, installments: [], advancePercent: '50' }));
+
   const onGstin = (e) => {
     const v = e.target.value.toUpperCase();
     const guess = guessIntraState(v);
@@ -121,7 +145,12 @@ export default function SalesDocumentDialog({ open, onClose, onSave, doc, docTyp
     notes: form.notes || null,
     accountId: doc ? doc.accountId ?? null : accountId ?? null,
     items: form.items.map((i) => ({ description: i.description, detail: i.detail || null, amountPaise: rupeesToPaise(i.amount) })),
+    installments: form.docType === 'QUOTATION'
+      ? form.installments.map((i, idx) => ({ n: idx + 1, label: i.label || null, amountPaise: rupeesToPaise(i.amount), unlocks: i.unlocks || null }))
+      : null,
   }), [form, doc, accountId]);
+
+  const installmentSum = useMemo(() => form.installments.reduce((sum, i) => sum + rupeesToPaise(i.amount), 0), [form.installments]);
 
   const totals = useMemo(() => computeTotals(payload), [payload]);
   const isInvoice = form.docType === 'INVOICE';
@@ -129,6 +158,10 @@ export default function SalesDocumentDialog({ open, onClose, onSave, doc, docTyp
   const submit = async () => {
     if (!form.clientName.trim()) {
       setError('Client name is required.');
+      return;
+    }
+    if (useInstallments && installmentSum !== totals.subtotalPaise) {
+      setError(`Installments add up to ${paise(installmentSum)} but the package is ${paise(totals.subtotalPaise)}.`);
       return;
     }
     setSaving(true);
@@ -189,10 +222,47 @@ export default function SalesDocumentDialog({ open, onClose, onSave, doc, docTyp
         <Button startIcon={<AddIcon />} onClick={addItem} sx={{ justifySelf: 'start' }}>Add line item</Button>
 
         <Typography variant="overline" sx={{ color: COLORS.textMuted }}>Payment schedule</Typography>
-        <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
-          <TextField size="small" type="number" label="Advance % (blank = none)" value={form.advancePercent} onChange={set('advancePercent')} inputProps={{ min: 0, max: 100 }} />
-          <TextField size="small" type="number" label="Advance received so far ₹" value={form.advanceReceived} onChange={set('advanceReceived')} inputProps={{ min: 0 }} />
-        </Box>
+        {form.docType === 'QUOTATION' && !useInstallments && (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Typography variant="body2" sx={{ color: COLORS.textMuted }}>Paid in installments?</Typography>
+            <Button size="small" variant="outlined" onClick={() => startInstallments(2)}>Split in 2</Button>
+            <Button size="small" variant="outlined" onClick={() => startInstallments(3)}>Split in 3</Button>
+            <Typography variant="caption" sx={{ color: COLORS.textMuted, flexBasis: '100%' }}>
+              With installments, an invoice is raised per installment when it is paid - never for the whole package - so GST is
+              owed only on money received. If a later installment never comes, nothing was invoiced for it.
+            </Typography>
+          </Box>
+        )}
+        {useInstallments && (
+          <Box sx={{ display: 'grid', gap: 1 }}>
+            <Alert severity="info" sx={{ py: 0 }}>
+              Amounts are before GST and must add up to the package ({paise(totals.subtotalPaise)}).
+              {anyLocked ? ' Installments that already have an invoice are locked.' : ''}
+            </Alert>
+            {form.installments.map((it, idx) => (
+              <Box key={idx} sx={{ display: 'grid', gap: 1, gridTemplateColumns: { xs: '1fr 1fr auto', sm: 'auto 2fr 1.2fr 3fr auto' }, alignItems: 'center' }}>
+                <Typography variant="body2" sx={{ fontWeight: 700, px: 0.5, display: { xs: 'none', sm: 'block' } }}>{idx + 1}</Typography>
+                <TextField size="small" label="When" placeholder="On signing" value={it.label} onChange={setInst(idx, 'label')} disabled={it.locked} />
+                <TextField size="small" type="number" label="Amount ₹" value={it.amount} onChange={setInst(idx, 'amount')} inputProps={{ min: 0 }} disabled={it.locked} />
+                <TextField size="small" label="Unlocks (delivered on payment)" placeholder="Website goes live" value={it.unlocks} onChange={setInst(idx, 'unlocks')} disabled={it.locked} sx={{ gridColumn: { xs: '1 / -1', sm: 'auto' } }} />
+                <IconButton aria-label="Remove installment" onClick={() => removeInst(idx)} disabled={it.locked}><DeleteOutlineIcon /></IconButton>
+              </Box>
+            ))}
+            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+              <Button size="small" startIcon={<AddIcon />} onClick={addInst} disabled={form.installments.length >= 12}>Add installment</Button>
+              {!anyLocked && <Button size="small" color="inherit" onClick={clearInstallments}>No installments</Button>}
+              <Typography variant="body2" sx={{ ml: 'auto', color: installmentSum === totals.subtotalPaise ? COLORS.textMuted : '#b91c1c' }}>
+                {paise(installmentSum)} of {paise(totals.subtotalPaise)}
+              </Typography>
+            </Box>
+          </Box>
+        )}
+        {!useInstallments && (
+          <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+            <TextField size="small" type="number" label="Advance % (blank = none)" value={form.advancePercent} onChange={set('advancePercent')} inputProps={{ min: 0, max: 100 }} />
+            <TextField size="small" type="number" label="Advance received so far ₹" value={form.advanceReceived} onChange={set('advanceReceived')} inputProps={{ min: 0 }} />
+          </Box>
+        )}
         <TextField size="small" label="Terms / notes" value={form.notes} onChange={set('notes')} multiline minRows={2} />
 
         <Divider />
@@ -207,7 +277,7 @@ export default function SalesDocumentDialog({ open, onClose, onSave, doc, docTyp
             <><span>IGST {form.gstRate || 0}%</span><span style={{ textAlign: 'right' }}>{paise(totals.igstPaise)}</span></>
           )}
           <span>Total</span><strong style={{ textAlign: 'right' }}>{paise(totals.totalPaise)}</strong>
-          {totals.advanceDuePaise > 0 && <><span>Advance due ({form.advancePercent}%)</span><span style={{ textAlign: 'right' }}>{paise(totals.advanceDuePaise)}</span></>}
+          {!useInstallments && totals.advanceDuePaise > 0 && <><span>Advance due ({form.advancePercent}%)</span><span style={{ textAlign: 'right' }}>{paise(totals.advanceDuePaise)}</span></>}
           {totals.advanceReceivedPaise > 0 && <><span>Less received</span><span style={{ textAlign: 'right' }}>−{paise(totals.advanceReceivedPaise)}</span></>}
           <span>Balance due</span><strong style={{ textAlign: 'right' }}>{paise(totals.balanceDuePaise)}</strong>
         </Box>

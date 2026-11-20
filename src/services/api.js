@@ -560,6 +560,17 @@ export const convertQuotationToInvoice = async (id) => {
   return data;
 };
 
+export const setSalesDocumentStatus = async (id, status) => {
+  const { data } = await api.put(`/platform/sales-documents/${id}/status`, { status });
+  return data;
+};
+
+/** Raise the invoice for one installment of a quotation - never the whole package. */
+export const raiseInstallmentInvoice = async (quotationId, n) => {
+  const { data } = await api.post(`/platform/sales-documents/${quotationId}/installments/${n}/invoice`);
+  return data;
+};
+
 export const deleteSalesDocument = async (id) => {
   await api.delete(`/platform/sales-documents/${id}`);
 };

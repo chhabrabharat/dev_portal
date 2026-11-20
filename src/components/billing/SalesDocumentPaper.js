@@ -15,7 +15,10 @@ export default function SalesDocumentPaper({ doc, bank }) {
   const t = doc.totals || {};
   const isInvoice = doc.docType === 'INVOICE';
   const gstPct = (doc.gstRateBp || 0) / 100;
-  const hasAdvanceSchedule = (t.advanceDuePaise || 0) > 0;
+  const installments = doc.installments || [];
+  const hasInstallments = !isInvoice && installments.length > 0;
+  const hasAdvanceSchedule = !hasInstallments && (t.advanceDuePaise || 0) > 0;
+  const gstOn = (p) => Math.round((p * (doc.gstRateBp || 0)) / 10000);
 
   return (
     <Box
@@ -40,6 +43,9 @@ export default function SalesDocumentPaper({ doc, bank }) {
           <div style={{ fontSize: 13 }}><span style={label}>Date </span>{longDate(doc.docDate)}</div>
           {doc.dueDate && <div style={{ fontSize: 13 }}><span style={label}>{isInvoice ? 'Due ' : 'Valid until '}</span>{longDate(doc.dueDate)}</div>}
           {doc.quotationRef && <div style={{ fontSize: 13 }}><span style={label}>Quotation ref </span>{doc.quotationRef}</div>}
+          {isInvoice && doc.installmentNo && (
+            <div style={{ fontSize: 13, fontWeight: 700 }}>Installment {doc.installmentNo}{doc.installmentCount ? ` of ${doc.installmentCount}` : ''}</div>
+          )}
           {doc.status === 'CANCELLED' && <div style={{ color: '#b91c1c', fontWeight: 700, marginTop: 4 }}>CANCELLED</div>}
         </Box>
       </Box>
@@ -119,6 +125,39 @@ export default function SalesDocumentPaper({ doc, bank }) {
       <div style={{ fontSize: 12, color: '#475569', marginTop: 8 }}>
         Amount in words: <em>{amountInWords(isInvoice ? t.balanceDuePaise : t.totalPaise)}</em>
       </div>
+
+      {hasInstallments && (
+        <Box sx={{ mt: 3 }}>
+          <div style={label}>Payment schedule</div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6 }}>
+            <thead>
+              <tr style={{ background: '#f8fafc' }}>
+                <th style={{ ...cell, textAlign: 'left', width: 32 }}>#</th>
+                <th style={{ ...cell, textAlign: 'left' }}>When</th>
+                <th style={{ ...cell, textAlign: 'left' }}>Delivered on payment</th>
+                <th style={right}>Amount (₹)</th>
+                <th style={right}>GST (₹)</th>
+                <th style={right}>Payable (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {installments.map((i) => (
+                <tr key={i.n}>
+                  <td style={cell}>{i.n}</td>
+                  <td style={{ ...cell, fontWeight: 600 }}>{i.label || `Installment ${i.n}`}</td>
+                  <td style={{ ...cell, color: '#475569' }}>{i.unlocks || ''}</td>
+                  <td style={right}>{paise(i.amountPaise)}</td>
+                  <td style={right}>{paise(gstOn(i.amountPaise))}</td>
+                  <td style={{ ...right, fontWeight: 600 }}>{paise(i.amountPaise + gstOn(i.amountPaise))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ fontSize: 12, color: '#475569', marginTop: 6 }}>
+            A tax invoice is issued for each installment as it falls due.
+          </div>
+        </Box>
+      )}
 
       {doc.notes && (
         <Box sx={{ mt: 3 }}>

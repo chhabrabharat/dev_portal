@@ -8,8 +8,9 @@ import Typography from '@mui/material/Typography';
 import TextField from '@mui/material/TextField';
 import SalesDocumentPaper from '../components/billing/SalesDocumentPaper';
 import SalesDocumentDialog from '../components/billing/SalesDocumentDialog';
+import InstallmentsCard from '../components/billing/InstallmentsCard';
 import { usePlatformAuth } from '../context/PlatformAuthContext';
-import { errorMessage, fetchSalesDocument, updateSalesDocument } from '../services/api';
+import { errorMessage, fetchSalesDocument, setSalesDocumentStatus, updateSalesDocument } from '../services/api';
 import { COLORS } from '../styles/js/styleConstants';
 
 const BANK_KEY = 'platformBillingBankDetails';
@@ -61,9 +62,20 @@ export default function BillingDocumentPage() {
         <Box>
           <Button component={RouterLink} to="/billing" size="small">← Billing</Button>
           {doc && <Typography variant="h6" sx={{ fontWeight: 700 }}>{doc.docNumber}</Typography>}
+          {doc?.parentId && (
+            <Typography variant="body2" sx={{ color: COLORS.textMuted }}>
+              Installment {doc.installmentNo}{doc.installmentCount ? ` of ${doc.installmentCount}` : ''} against{' '}
+              <Typography component={RouterLink} to={`/billing/${doc.parentId}`} sx={{ color: COLORS.primary, fontSize: 'inherit' }}>{doc.quotationRef}</Typography>
+            </Typography>
+          )}
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           {doc?.docType === 'INVOICE' && <Button variant="outlined" onClick={() => setBankOpen((v) => !v)}>Bank details</Button>}
+          {canWrite && doc?.docType === 'INVOICE' && doc.status !== 'PAID' && doc.status !== 'CANCELLED' && (
+            <Button variant="outlined" color="success" onClick={async () => {
+              try { await setSalesDocumentStatus(doc.id, 'PAID'); await load(); } catch (e) { setError(errorMessage(e, 'Could not mark paid')); }
+            }}>Mark paid</Button>
+          )}
           {canWrite && doc && <Button variant="outlined" onClick={() => setEditing(true)}>Edit</Button>}
           <Button variant="contained" onClick={print} disabled={!doc}>Print / Save as PDF</Button>
         </Box>
@@ -85,6 +97,7 @@ export default function BillingDocumentPage() {
 
       {error && <Alert severity="error">{error}</Alert>}
       {!doc && !error && <LinearProgress />}
+      {doc && <InstallmentsCard doc={doc} onChanged={load} />}
       {doc && <SalesDocumentPaper doc={doc} bank={bank} />}
 
       {editing && doc && (
