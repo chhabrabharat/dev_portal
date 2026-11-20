@@ -7,6 +7,9 @@ import ApiBaseWarning from './components/ApiBaseWarning';
 import { usePlatformAuth } from './context/PlatformAuthContext';
 import LoginPage from './pages/LoginPage';
 import AccountsPage from './pages/AccountsPage';
+import ClinicsPage from './pages/ClinicsPage';
+import ClinicDetailPage from './pages/ClinicDetailPage';
+import ClinicStatsPage from './pages/ClinicStatsPage';
 import AccountDetailPage from './pages/AccountDetailPage';
 import UsagePage from './pages/UsagePage';
 import TrafficPage from './pages/TrafficPage';
@@ -75,6 +78,10 @@ export default function App() {
       <ApiBaseWarning />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        {/* Clinics tab: soft category, drill-down, day-wise stats. /accounts below is the lifecycle/plan view. */}
+        <Route path="/clinics" element={<RequireOperator><ClinicsPage /></RequireOperator>} />
+        <Route path="/clinics/stats" element={<RequireOperator><ClinicStatsPage /></RequireOperator>} />
+        <Route path="/clinics/:id" element={<RequireOperator><ClinicDetailPage /></RequireOperator>} />
         <Route path="/accounts" element={<RequireOperator><AccountsPage /></RequireOperator>} />
         <Route path="/accounts/:id" element={<RequireOperator><AccountDetailPage /></RequireOperator>} />
         <Route path="/usage" element={<RequireOperator><UsagePage /></RequireOperator>} />

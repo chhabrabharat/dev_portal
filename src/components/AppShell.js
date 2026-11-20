@@ -11,7 +11,9 @@ import { usePlatformAuth } from '../context/PlatformAuthContext';
 import { COLORS, LAYOUT, SHADOWS } from '../styles/js/styleConstants';
 
 const NAV = [
-  { to: '/accounts', label: 'Clinics' },
+  { to: '/clinics', label: 'Clinics' },
+  // Status, plan, features and entitlements per clinic (the lifecycle side of the same clinics).
+  { to: '/accounts', label: 'Accounts' },
   { to: '/usage', label: 'Usage' },
   // Next to Usage rather than beside Leads: both answer "is this clinic getting anything out of
   // us", one from inside the app and one from the public page.

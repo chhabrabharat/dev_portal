@@ -366,6 +366,32 @@ export const changeOwnPassword = async (currentPassword, newPassword) => {
   return data;
 };
 
+// ---- Clinics tab (/api/platform/clinics, /api/platform/whatsapp) ----
+const clean = (o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== '' && v !== 'ALL'));
+
+export const fetchClinics = async (params = {}) => (await api.get('/platform/clinics', { params: clean(params) })).data;
+export const fetchClinicCounts = async () => (await api.get('/platform/clinics/counts')).data;
+export const fetchClinicCategory = async (id) => (await api.get(`/platform/clinics/${id}/category`)).data;
+export const setClinicCategory = async (id, body) => (await api.put(`/platform/clinics/${id}/category`, body)).data;
+export const setClinicCategoryBulk = async (body) => (await api.put('/platform/clinics/category/bulk', body)).data;
+export const fetchClinicCategoryHistory = async (id) => (await api.get(`/platform/clinics/${id}/category/history`)).data;
+export const fetchClinicBranches = async (id) => (await api.get(`/platform/clinics/${id}/branches`)).data;
+export const fetchClinicDoctors = async (id) => (await api.get(`/platform/clinics/${id}/doctors`)).data;
+export const revealDoctorContact = async (id, doctorId) => (await api.get(`/platform/clinics/${id}/doctors/${doctorId}/contact`)).data;
+export const revealUserContact = async (id, userId) => (await api.get(`/platform/clinics/${id}/users/${userId}/contact`)).data;
+export const fetchDaywiseStats = async (params) => (await api.get('/platform/clinics/stats/daywise', { params: clean(params) })).data;
+export const fetchWhatsappStats = async (params) => (await api.get('/platform/clinics/stats/whatsapp', { params: clean(params) })).data;
+export const fetchDaywiseCsv = async (params) => (await api.get('/platform/clinics/stats/daywise/export', { params: clean(params), responseType: 'blob' })).data;
+export const fetchClinicGoogle = async (id) => (await api.get(`/platform/clinics/${id}/google-listing`)).data;
+export const refreshClinicGoogle = async (id) => (await api.post(`/platform/clinics/${id}/google-listing/refresh`)).data;
+export const fetchClinicGoogleHistory = async (id) => (await api.get(`/platform/clinics/${id}/google-listing/history`)).data;
+export const fetchWhatsappKinds = async () => (await api.get('/platform/whatsapp/kinds')).data;
+export const fetchWhatsappTemplates = async () => (await api.get('/platform/whatsapp/templates')).data;
+export const fetchWhatsappRules = async (accountId) => (await api.get(`/platform/whatsapp/clinics/${accountId}/rules`)).data;
+export const setWhatsappRule = async (accountId, body) => (await api.put(`/platform/whatsapp/clinics/${accountId}/rules`, body)).data;
+export const deleteWhatsappRule = async (accountId, ruleId) => { await api.delete(`/platform/whatsapp/clinics/${accountId}/rules/${ruleId}`); };
+export const fetchWhatsappEffective = async (accountId, params = {}) => (await api.get(`/platform/whatsapp/clinics/${accountId}/effective`, { params: clean(params) })).data;
+
 export default api;
 
 // --- commercial terms and entitlements ------------------------------------------------------
